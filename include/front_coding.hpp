@@ -1,13 +1,13 @@
 #pragma once
 
 #include "util_types.hpp"
-#include "../../vectors/bit_vector.hpp"
+#include "../external/tongrams/include/vectors/bit_vector.hpp"
 
 #include <fstream>
 
 /*
 
-    bit-aligned version
+    byte-aligned version
 
 */
 
@@ -25,28 +25,29 @@ const static std::streamsize BLOCK_BITS = 8 * BLOCK_BYTES;
 
 template <typename Comparator>
 struct writer {
-    writer(uint8_t N) : m_comparator(N), m_l(util::ceil_log2(N + 1)) {}
+    writer(uint8_t N) : m_comparator(N) {}
 
     template <typename Iterator>
     void write_block(std::ofstream& os, Iterator begin, Iterator end, size_t n,
                      ngrams_block_statistics const& stats) {
-        /*
-            NOTE: save for each block, its own max_word_id
-            and its size.
-            This allows us to write block even when we do not
-            know the whole vocabulary size.
-        */
-        uint8_t w = util::ceil_log2(stats.max_word_id + 1);
-        uint8_t v = util::ceil_log2(stats.max_count + 1);
+        // in bytes
+        std::cerr << "stats.max_word_id = " << stats.max_word_id << std::endl;
+        std::cerr << "stats.max_count = " << stats.max_count << std::endl;
+        uint8_t l = 1;
+        uint8_t w = (util::ceil_log2(stats.max_word_id + 1) + 7) / 8;
+        uint8_t v = (util::ceil_log2(stats.max_count + 1) + 7) / 8;
         essentials::save_pod(os, w);
         essentials::save_pod(os, v);
 
-        uint8_t N = m_comparator.order();
-        size_t max_record_size = m_l + N * w + v;
-
-        std::cerr << "m_l = " << int(m_l) << "; w = " << int(w)
-                  << "; v = " << int(v) << std::endl;
+        std::cerr << "w = " << int(w) << "; v = " << int(v) << std::endl;
         std::cerr << "\tsaving " << n << " records" << std::endl;
+
+        // in bits
+        l *= 8;
+        w *= 8;
+        v *= 8;
+        uint8_t N = m_comparator.order();
+        size_t max_record_size = l + N * w + v;  // in bits
 
         m_buffer.init();
         m_buffer.reserve(BLOCK_BITS);
@@ -79,7 +80,7 @@ struct writer {
             if (BLOCK_BITS - m_buffer.size() < max_record_size) {
                 // flush current m_buffer, inserting padding
                 // always flush exactly BLOCK_BYTES bytes
-                save(m_buffer.bits(), BLOCK_BYTES);
+                save(m_buffer.data(), BLOCK_BYTES);
                 m_buffer.init();
                 m_buffer.reserve(BLOCK_BITS);
                 written = encoded;
@@ -95,7 +96,7 @@ struct writer {
                 // std::cerr << "lcp = " << lcp << std::endl;
                 assert(lcp < N);
 
-                m_buffer.append_bits(lcp, m_l);
+                m_buffer.append_bits(lcp, l);
 
                 if (lcp == 0) {
                     explicit_write(ptr);
@@ -116,14 +117,13 @@ struct writer {
         // save last block if needed
         if (written != n) {
             std::streamsize bytes = (m_buffer.size() + 7) / 8;
-            save(m_buffer.bits(), bytes);
+            save(m_buffer.data(), bytes);
         }
     }
 
 private:
     Comparator m_comparator;
     bit_vector_builder m_buffer;
-    uint8_t m_l;
 };
 
 struct cache {
@@ -175,19 +175,18 @@ struct ngrams_block {
         const static size_t W = sizeof(word_id);
 
         fc_iterator(uint8_t N, size_t pos, size_t size,
-                    ngrams_block<Comparator> const& m_block)
-            : m_it(m_block.m_memory)
+                    ngrams_block<Comparator>& m_block)
+            : m_it(m_block.m_memory.data())
             , m_comparator(N)
             , m_back(N)
             , m_pos(pos)
             , m_size(size)
-            , m_l(m_block.m_l)
             , m_w(m_block.m_w)
             , m_v(m_block.m_v) {
             // std::cerr << "initializing iterator with:\n";
+            // std::cerr << "N = " << int(N) << "\n";
             // std::cerr << "m_pos = " << m_pos << "\n";
             // std::cerr << "m_size = " << m_size << "\n";
-            // std::cerr << "m_l = " << int(m_l) << "\n";
             // std::cerr << "m_w = " << int(m_w) << "\n";
             // std::cerr << "m_v = " << int(m_v) << std::endl;
             // std::cerr << "init iterator at pos " << pos << "/" << size <<
@@ -200,13 +199,12 @@ struct ngrams_block {
         }
 
         void swap(fc_iterator& other) {
-            m_it.swap(other.m_it);
-            std::swap(m_comparator, other.m_comparator);
+            std::swap(m_it, other.m_it);
+            m_comparator.swap(other.m_comparator);
             m_back.swap(other.m_back);
             m_back.init();
             std::swap(m_pos, other.m_pos);
             std::swap(m_size, other.m_size);
-            std::swap(m_l, other.m_l);
             std::swap(m_w, other.m_w);
             std::swap(m_v, other.m_v);
         }
@@ -238,7 +236,6 @@ struct ngrams_block {
                 m_back.init();
                 m_pos = rhs.m_pos;
                 m_size = rhs.m_size;
-                m_l = rhs.m_l;
                 m_w = rhs.m_w;
                 m_v = rhs.m_v;
             }
@@ -272,39 +269,36 @@ struct ngrams_block {
         }
 
     private:
-        bits_iterator<bit_vector_builder> m_it;
+        uint8_t* m_it;
         Comparator m_comparator;
         cache m_back;
         size_t m_pos, m_size;
-        uint8_t m_l, m_w, m_v;
+        uint8_t m_w, m_v;
 
         void decode_value() {
-            uint64_t count(m_it.get_bits(m_v));
-            m_back.store(reinterpret_cast<uint8_t const*>(&count),
-                         sizeof(count));
-            m_back.pos += sizeof(count);
+            m_back.store(reinterpret_cast<uint8_t const*>(m_it), m_v);
+            m_back.pos += sizeof(payload);
+            m_it += m_v;
         }
 
         void decode_explicit() {
             uint8_t N = m_comparator.order();
-            // std::cerr << "decoding words: ";
+            assert(m_back.pos == m_back.begin());
             for (uint8_t i = 0; i < N; ++i) {
-                word_id w(m_it.get_bits(m_w));
-                // std::cerr << "m_it.position() = " << m_it.position() <<
-                // std::endl; std::cerr << w << " ";
-                m_back.store(reinterpret_cast<uint8_t const*>(&w), W);
+                m_back.store(reinterpret_cast<uint8_t const*>(m_it), m_w);
                 m_back.pos += W;
+                m_it += m_w;
             }
             decode_value();
-            // std::cerr << "m_it.position() = " << m_it.position() <<
-            // std::endl;
         }
 
         void decode() {
             m_back.init();
 
-            int lcp = m_it.get_bits(m_l);
-            // std::cerr << "lcp = " << lcp << std::endl;
+            uint8_t lcp = 0;
+            std::memcpy(&lcp, m_it, 1);
+            // std::cerr << "lcp = " << int(lcp) << std::endl;
+            m_it += 1;
 
             if (lcp == 0) {
                 decode_explicit();
@@ -316,15 +310,15 @@ struct ngrams_block {
             m_comparator.advance(i, lcp);
             m_back.pos = m_back.begin() + i * W;
 
-            // store into [m_back] the other [N] - [lcp] word_ids
             uint8_t N = m_comparator.order();
             assert(lcp < N);
 
+            // store into [m_back] the other [N] - [lcp] word_ids
             for (int j = 0; j < N - lcp; ++j) {
-                word_id w(m_it.get_bits(m_w));
-                m_back.store(reinterpret_cast<uint8_t const*>(&w), W);
+                m_back.store(reinterpret_cast<uint8_t const*>(m_it), m_w);
                 m_comparator.next(i);
                 m_back.pos = m_back.begin() + i * W;
+                m_it += m_w;
             }
 
             m_back.pos = m_back.begin() + N * W;
@@ -336,22 +330,12 @@ struct ngrams_block {
     typedef ngram_pointer<payload> pointer;
 
     ngrams_block(uint8_t N, size_t size, uint8_t w, uint8_t v)
-        : prd(false)
-        , m_size(size)
-        , m_N(N)
-        , m_l(util::ceil_log2(N + 1))
-        , m_w(w)
-        , m_v(v) {
-        // std::cerr << "m_l = " << int(m_l) << "; ";
-        // std::cerr << "m_w = " << int(m_w) << "; ";
-        // std::cerr << "v = " << int(v)
-        //           << std::endl;
-    }
+        : prd(false), m_size(size), m_N(N), m_w(w), m_v(v) {}
 
     void read(std::ifstream& is, size_t bytes) {
         // std::cerr << "reading " << bytes << " bytes from file" << std::endl;
-        m_memory.resize(8 * bytes);
-        is.read(reinterpret_cast<char*>(m_memory.data.data()), bytes);
+        m_memory.resize(bytes);
+        is.read(reinterpret_cast<char*>(m_memory.data()), bytes);
     }
 
     template <typename C>
@@ -401,13 +385,12 @@ struct ngrams_block {
         return ret;
     }
 
-    void materialize_index(uint64_t /*nuvalues*/) {}
+    void materialize_index(uint64_t) {}
 
     void swap(ngrams_block<Comparator>& other) {
         m_memory.swap(other.m_memory);
         std::swap(m_size, other.m_size);
         std::swap(m_N, other.m_N);
-        std::swap(m_l, other.m_l);
         std::swap(m_w, other.m_w);
         std::swap(m_v, other.m_v);
         std::swap(prd, other.prd);
@@ -434,9 +417,10 @@ struct ngrams_block {
     bool prd;
 
 private:
-    bit_vector_builder m_memory;
+    std::vector<uint8_t> m_memory;
     size_t m_size;
-    uint8_t m_N, m_l, m_w, m_v;
+    uint8_t m_N;
+    uint8_t m_w, m_v;
 };
 }  // namespace fc
 }  // namespace tongrams

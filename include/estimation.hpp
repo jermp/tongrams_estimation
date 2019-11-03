@@ -5,7 +5,6 @@
 #include "vocabulary.hpp"
 
 #include "tmp.hpp"
-// #include "debug.cpp"
 #include "statistics.hpp"
 
 #include "counting.hpp"
@@ -47,15 +46,16 @@ struct estimation {
         m_tmp_data.word_ids.clear();
         auto handle = util::async_call(write_vocab);
 
-        if (m_config.compress_blocks) {
-            run<adjusting<stream::compressed_stream_generator>>("adjusting");
-        } else {
-            run<adjusting<stream::uncompressed_stream_generator>>("adjusting");
-        }
+        // if (m_config.compress_blocks) {
+        //     run<adjusting<stream::compressed_stream_generator>>("adjusting");
+        // } else {
+        //     run<adjusting<stream::uncompressed_stream_generator>>("adjusting");
+        // }
 
         util::wait(handle);
 
-        run<last>("last");
+        // run<last>("last");
+
         // util::clean_temporaries(m_config.tmp_dirname);
     }
 

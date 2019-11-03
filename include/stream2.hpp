@@ -2,11 +2,9 @@
 
 #include "util.hpp"
 #include "stream.hpp"
-// #include "front_coding.hpp"
-#include "front_coding2.hpp"
+#include "front_coding.hpp"
 
 namespace tongrams {
-
 namespace stream {
 
 typedef stream::ngrams_block_partition uncompressed_block_type;
@@ -264,5 +262,6 @@ private:
         m_I_time += elapsed.count();
     };
 };
+
 }  // namespace stream
 }  // namespace tongrams

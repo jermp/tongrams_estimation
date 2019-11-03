@@ -74,8 +74,12 @@ struct sliding_window {
         m_buff.set_back(id);
     }
 
-    inline auto const& get() {
+    ngram const& get() {
         return m_buff;
+    }
+
+    word_id const* data() {
+        return m_buff.data.data();
     }
 
     // return the position of the end of current window,

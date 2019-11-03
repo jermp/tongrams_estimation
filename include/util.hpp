@@ -52,13 +52,14 @@ void optimize_access(Address addr, size_t len, int MODE) {
     optimize_access(addr, len, POSIX_MADV_RANDOM)
 
 template <typename File>
-void open_file_partition(File& file, std::string const& filename,
-                         size_t partition_size, size_t offset,  // in bytes
-                         uint8_t const** data) {
+uint8_t const* open_file_partition(File& file, std::string const& filename,
+                                   size_t partition_size,
+                                   size_t offset  // in bytes
+) {
     file.open(filename.c_str(), partition_size, offset);
     util::check_file(file);
-    *data = reinterpret_cast<uint8_t const*>(file.data());
     assert(file.size() == partition_size);
+    return reinterpret_cast<uint8_t const*>(file.data());
 }
 
 void clean_temporaries(std::string const& tmp_dirname) {
