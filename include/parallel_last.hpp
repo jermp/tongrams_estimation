@@ -93,7 +93,7 @@ struct last {
         if (num_threads > 1) {
             --num_threads;  // reserve 1 thread for reading from disk
         }
-        // std::cerr << "num_threads = " << num_threads << std::endl;
+        std::cerr << "num_threads = " << num_threads << std::endl;
 
         uint64_t mod = num_threads * 5;
         std::vector<worker> workers;
@@ -102,11 +102,11 @@ struct last {
         auto start = clock_type::now();
 
         for (; m_current_block_id < m_num_blocks;) {
-            // std::cerr << "fetching blocks..." << std::endl;
+            std::cerr << "fetching blocks..." << std::endl;
             util::wait(m_handle_ptr);
             uint64_t num_fetched_blocks = m_num_fetched_blocks;
-            // std::cerr << "num_fetched_blocks = " << num_fetched_blocks <<
-            // std::endl;
+            std::cerr << "num_fetched_blocks = " << num_fetched_blocks
+                      << std::endl;
             assert(num_fetched_blocks <= num_threads);
             m_current_block_id += num_fetched_blocks;
 
@@ -157,8 +157,8 @@ struct last {
 
             uint64_t vocab_size = m_stats.num_ngrams(1);
 
-// std::cerr << "prefix summing on probs_offsets" << std::endl;
-#pragma omp parallel for
+            // std::cerr << "prefix summing on probs_offsets" << std::endl;
+            // #pragma omp parallel for
             for (uint8_t n = 1; n < N;
                  ++n) {  // unigram probs/backoffs are put in a hash table
                 for (uint32_t j = 0; j < vocab_size; ++j) {
@@ -203,7 +203,7 @@ struct last {
                 }
             }
 
-#pragma omp parallel for
+            // #pragma omp parallel for
             for (uint8_t n = 1; n < N; ++n) {
                 // std::cerr << "updating " << int(n) << "-probs_offsets" <<
                 // std::endl;

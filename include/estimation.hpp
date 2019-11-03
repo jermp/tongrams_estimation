@@ -10,8 +10,8 @@
 
 #include "counting.hpp"
 #include "adjusting.hpp"
-// #include "last.hpp"
-#include "parallel_last.hpp"
+#include "last.hpp"
+// #include "parallel_last.hpp"
 
 namespace tongrams {
 

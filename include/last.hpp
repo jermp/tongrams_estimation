@@ -2,7 +2,7 @@
 
 #include "constants.hpp"
 #include "util.hpp"
-#include "../../utils/util.hpp"
+#include "../external/tongrams/include/utils/util.hpp"
 
 #include "index_types.hpp"
 #include "stream2.hpp"
