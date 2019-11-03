@@ -1,0 +1,3 @@
+[submodule "external/tongrams"]
+	path = external/tongrams
+	url = https://github.com/jermp/tongrams.git
