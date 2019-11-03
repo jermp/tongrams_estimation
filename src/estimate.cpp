@@ -39,10 +39,10 @@ int main(int argc, char** argv) {
     for (int i = 3; i < argc; ++i) {
         if (argv[i] == std::string("--ram")) {
             uint64_t ram =
-                static_cast<uint64_t>(std::stod(argv[++i]) * essentials::GB);
+                static_cast<uint64_t>(std::stod(argv[++i]) * essentials::GiB);
             if (ram > config.RAM) {
                 std::cerr << "Warning: this machine has "
-                          << config.RAM / essentials::GB << " GB of RAM."
+                          << config.RAM / essentials::GiB << " GiB of RAM."
                           << std::endl;
             } else {
                 config.RAM = ram;
@@ -75,7 +75,7 @@ int main(int argc, char** argv) {
             << "text_chunk_size must be a multiple of the operating system "
                "granularity: "
             << config.page_size << " bytes" << std::endl;
-        std::abort();
+        return 1;
     }
 
     config.vocab_tmp_subdirname = config.tmp_dirname + "/vocab";
