@@ -13,9 +13,6 @@
 
 namespace tongrams {
 
-typedef ngram_pointer<payload> pointer;
-typedef context_order_comparator<pointer> context_order_comparator_type;
-
 namespace fc {
 
 const static std::streamsize BLOCK_BYTES =

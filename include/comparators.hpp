@@ -219,4 +219,5 @@ struct context_order_comparator {
 private:
     int m_N;
 };
+
 }  // namespace tongrams

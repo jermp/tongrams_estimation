@@ -7,7 +7,7 @@
 #include "tmp.hpp"
 #include "statistics.hpp"
 
-#include "counting.hpp"
+#include "counting/counting.hpp"
 #include "adjusting.hpp"
 #include "last.hpp"
 // #include "parallel_last.hpp"

@@ -38,6 +38,9 @@ struct ngram_pointer {
     word_id* data;
 };
 
+typedef ngram_pointer<payload> pointer;
+typedef context_order_comparator<pointer> context_order_comparator_type;
+
 struct ngrams_block_statistics {
     word_id max_word_id;
     uint64_t max_count;
