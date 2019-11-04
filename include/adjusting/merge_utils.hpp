@@ -16,10 +16,9 @@ struct cursor {
     uint64_t index;
 };
 
-template <typename C>
+template <typename Comparator>
 struct cursor_comparator {
     cursor_comparator() {}
-
     cursor_comparator(uint8_t ngram_order) : m_comparator(ngram_order) {}
 
     template <typename T>
@@ -29,20 +28,12 @@ struct cursor_comparator {
     }
 
 private:
-    C m_comparator;
+    Comparator m_comparator;
 };
 
-template <typename T, typename C>
+template <typename T, typename Comparator>
 struct min_heap {
-    min_heap() {}
-
-    min_heap(C const& comparator) {
-        init(comparator);
-    }
-
-    void init(C const& comparator) {
-        m_comparator = comparator;
-    }
+    min_heap(Comparator comparator) : m_comparator(comparator) {}
 
     void push(T const& t) {
         m_q.push_back(t);
@@ -83,7 +74,7 @@ struct min_heap {
 
 private:
     std::vector<T> m_q;
-    C m_comparator;
+    Comparator m_comparator;
 
     void sink(uint64_t pos) {
         assert(pos <= size());

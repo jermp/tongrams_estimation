@@ -13,6 +13,9 @@ namespace tongrams {
 
 template <typename StreamGenerator>
 struct adjusting {
+    typedef cursor_comparator<context_order_comparator_type>
+        cursor_comparator_type;
+
     adjusting(configuration const& config, tmp::data& tmp_data,
               tmp::statistics& tmp_stats, statistics& stats)
         : m_config(config)
@@ -21,8 +24,7 @@ struct adjusting {
         , m_stats_builder(config, tmp_data, tmp_stats)
         , m_writer(config, constants::file_extension::merged)
         , m_comparator(config.max_order)
-        , m_cursor_comparator(config.max_order)
-        , m_cursors(m_cursor_comparator)
+        , m_cursors(cursor_comparator_type(config.max_order))
         , m_record_size(
               ngrams_block<count_type>::record_size(config.max_order, 1))
         , m_num_bytes(
@@ -284,10 +286,8 @@ private:
     adjusting_writer m_writer;
     context_order_comparator_type m_comparator;
 
-    cursor_comparator<context_order_comparator_type> m_cursor_comparator;
-
     min_heap<cursor<typename input_block_type::iterator>,
-             cursor_comparator<context_order_comparator_type> >
+             cursor_comparator_type>
         m_cursors;
 
     uint64_t m_record_size;

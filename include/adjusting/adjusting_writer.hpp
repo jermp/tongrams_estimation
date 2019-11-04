@@ -19,7 +19,7 @@ struct adjusting_writer {
     }
 
     ~adjusting_writer() {
-        if (not m_buffer.empty()) {
+        if (!m_buffer.empty()) {
             std::cerr << "Error: some data still need to be written"
                       << std::endl;
             std::terminate();
