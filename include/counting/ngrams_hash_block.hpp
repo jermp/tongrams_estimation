@@ -92,14 +92,14 @@ struct ngrams_hash_block {
         assert(m_block.template is_sorted<Comparator>(begin, end));
 #else
         m_index.resize(size());
-        for (size_t i = 0; i < size(); ++i) {
+        for (size_t i = 0; i != size(); ++i) {
             m_index[i] = i;
         }
 
 #ifdef __APPLE__
         std::sort
 #else
-        __gnu_parallel::sort // it does not work for Max OS X :(
+        __gnu_parallel::sort
 #endif
             (m_index.begin(), m_index.end(), [&](auto const& i, auto const& j) {
                 return cmp(m_block.access(i), m_block.access(j));
