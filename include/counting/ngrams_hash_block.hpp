@@ -11,7 +11,8 @@
 
 namespace tongrams {
 
-template <typename Value, typename Prober, typename EqualPred = equal_to>
+template <typename Value, typename Prober = hash_utils::linear_prober,
+          typename EqualPred = equal_to>
 struct ngrams_hash_block {
     ngrams_hash_block() : m_size(0), m_num_bytes(0) {
         resize(0);
@@ -52,10 +53,8 @@ struct ngrams_hash_block {
                 at = m_data[it];
                 return true;
             }
-
             ++m_prober;
             it = *m_prober;
-
             if (it == start) {  // back to starting point:
                                 // thus all positions have been checked
                 std::cerr << "ERROR: all positions have been checked"
@@ -67,12 +66,8 @@ struct ngrams_hash_block {
 
         m_data[it] = m_size;
         at = m_size;
-
-        m_block.set(m_size,  // position
-                    key.data.begin(), key.data.end(), m_default_value);
-
+        m_block.set(m_size, key.data.begin(), key.data.end(), m_default_value);
         ++m_size;
-
         return false;
     }
 

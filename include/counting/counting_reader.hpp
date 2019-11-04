@@ -19,7 +19,7 @@ struct counting_reader {
         , m_CPU_time(0.0) {
         m_num_ngrams_per_block =
             0.9 * m_config.RAM / 2 /
-            (ngram_bytes() + 8  // ngrams + payload
+            (ngram_bytes() + 8  // ngrams + count_type
 #ifdef LSD_RADIX_SORT
              + 8  // pointers
 #endif
@@ -36,7 +36,8 @@ struct counting_reader {
         m_file_end = file_end;
         assert(partition_begin <= partition_end);
 
-        m_counts.init(m_config.max_order, m_num_ngrams_per_block, payload(1));
+        m_counts.init(m_config.max_order, m_num_ngrams_per_block,
+                      count_type(1));
 
         m_window.init({data + partition_begin, data + m_partition_end},
                       partition_begin);
@@ -76,9 +77,11 @@ struct counting_reader {
 
         // NOTE: if we are at the end of file,
         // add [m_config.max_order - 1] ngrams padded with empty tokens,
-        // i.e., for max_order = 5 and m text words: w_{m-3} w_{m-2} w_{m-1}
-        // w_m </> w_{m-2} w_{m-1} w_m </> </> w_{m-1} w_m </> </> </> w_m
-        // </> </> </> </>
+        // i.e., for max_order = 5 and m text words:
+        // w_{m-3} w_{m-2} w_{m-1} w_m </>
+        // w_{m-2} w_{m-1} w_m </> </>
+        // w_{m-1} w_m </> </> </>
+        // w_m </> </> </> </>
         if (m_file_end) {
             for (uint64_t i = 0; i < m_config.max_order - 2; ++i) {
                 count();
@@ -90,7 +93,7 @@ struct counting_reader {
 
         {
             counting_step::block_type tmp;
-            tmp.init(m_config.max_order, m_num_ngrams_per_block, payload(1));
+            tmp.init(m_config.max_order, m_num_ngrams_per_block, count_type(1));
             tmp.swap(m_counts);
             tmp.release_hash_index();
             m_writer.push(tmp);
@@ -164,7 +167,7 @@ private:
                 ;  // wait for flush
             essentials::logger("done");
             counting_step::block_type tmp;
-            tmp.init(m_config.max_order, m_num_ngrams_per_block, payload(1));
+            tmp.init(m_config.max_order, m_num_ngrams_per_block, count_type(1));
             tmp.swap(m_counts);
             tmp.release_hash_index();
             m_writer.push(tmp);

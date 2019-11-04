@@ -14,17 +14,17 @@ static const int invalid_id = -1;
 }
 
 // NOTE: this class is useless, we can do everything with ngrams_block
-struct ngrams_block_partition : ngrams_block<payload> {
+struct ngrams_block_partition : ngrams_block<count_type> {
     ngrams_block_partition(uint8_t ngram_order, uint64_t num_values) {
         init(ngram_order, num_values);
     }
 
-    typedef payload value;
-    typedef ngram_pointer<payload> pointer;
-    typedef ngrams_block<payload>::iterator ngrams_iterator;
+    typedef count_type value;
+    typedef ngram_pointer<count_type> pointer;
+    typedef ngrams_block<count_type>::iterator ngrams_iterator;
 
     void init(uint8_t ngram_order, uint64_t num_values) {
-        ngrams_block<payload>::init(ngram_order, num_values);
+        ngrams_block<count_type>::init(ngram_order, num_values);
         range = {0, 0};
         bid = constants::invalid_id;
         sid = constants::invalid_id;
@@ -44,7 +44,7 @@ struct ngrams_block_partition : ngrams_block<payload> {
     };
 
     ngrams_block_partition(ngrams_block_partition const&)
-        : ngrams_block<payload>() {
+        : ngrams_block<count_type>() {
         assert(false);
     }
 
@@ -59,7 +59,7 @@ struct ngrams_block_partition : ngrams_block<payload> {
     }
 
     void swap(ngrams_block_partition& other) {
-        ngrams_block<payload>::swap(other);
+        ngrams_block<count_type>::swap(other);
         std::swap(range, other.range);
         std::swap(bid, other.bid);
         std::swap(sid, other.sid);
@@ -138,7 +138,7 @@ struct ngrams_block_partition : ngrams_block<payload> {
     // uint64_t sum_values(uint64_t num_values = 1) const {
     //     uint64_t sum = 0;
     //     std::for_each(m_index.begin(), m_index.end(),
-    //         [&](ngram_pointer<payload> const& ptr) {
+    //         [&](ngram_pointer<count_type> const& ptr) {
     //             sum += (ptr.value(order(), num_values - 1))->value;
     //         }
     //     );
@@ -170,7 +170,7 @@ struct ngrams_block_partition : ngrams_block<payload> {
 
 struct writer {
     writer(uint8_t N)
-        : m_record_size(ngrams_block<payload>::record_size(N, 1)) {}
+        : m_record_size(ngrams_block<count_type>::record_size(N, 1)) {}
 
     template <typename Iterator>
     void write_block(std::ofstream& os, Iterator begin, Iterator end, size_t,

@@ -18,14 +18,6 @@ namespace tongrams {
 struct equal_to {
     bool operator()(word_id const* x, word_id const* y, size_t n) {
         return memcmp(x, y, n) == 0;
-        // const __m128i xx = _mm_loadu_si128(reinterpret_cast<const
-        // __m128i*>(x)); const __m128i yy =
-        // _mm_loadu_si128(reinterpret_cast<const __m128i*>(y)); const __m128i
-        // result = _mm_cmpeq_epi32(xx, yy); const int mask =
-        // _mm_movemask_epi8(result); if (mask == 0xffff) {
-        //     return x[n-1] == y[n-1];
-        // }
-        // return false;
     }
 };
 
@@ -39,16 +31,13 @@ struct parallel_executor {
         size_t num_threads = std::thread::hardware_concurrency()) {
         executor.reset(new executor_type(num_threads));
     }
-
     std::unique_ptr<executor_type> executor;
 };
 
 template <typename Iterator>
 struct iterator_range {
     iterator_range() {}
-
     iterator_range(Iterator b, Iterator e) : begin(b), end(e) {}
-
     Iterator begin, end;
 };
 
@@ -60,11 +49,10 @@ struct adaptor {
     }
 };
 
-template <typename UINT>
+template <typename UintType>
 struct payload_container {
     payload_container() {}
-
-    payload_container(UINT x) : value(x) {}
+    payload_container(UintType x) : value(x) {}
 
     static payload_container invalid() {
         return payload_container(0);
@@ -83,10 +71,10 @@ struct payload_container {
         std::cerr << "[" << value << "]";
     }
 
-    UINT value;
+    UintType value;
 };
 
-typedef payload_container<uint64_t> payload;
+typedef payload_container<uint64_t> count_type;
 
 struct filename_generator {
     filename_generator(std::string const& dir_name, std::string const& prefix,
@@ -173,52 +161,52 @@ struct semi_sync_queue {
         open();
     }
 
-    inline void close() {
+    void close() {
         m_open = false;
     }
 
-    inline void open() {
+    void open() {
         m_open = true;
     }
 
-    inline void lock() {
+    void lock() {
         return m_mutex.lock();
     }
 
-    inline void unlock() {
+    void unlock() {
         return m_mutex.unlock();
     }
 
-    inline void push(T& t) {
-        m_buffer.push_back(std::move(t));
+    void push(T& val) {
+        m_buffer.push_back(std::move(val));
     }
 
-    template <typename Iterator>
-    inline void bulk_push(Iterator begin, Iterator end) {
-        lock();
-        for (; begin != end; ++begin) {
-            m_buffer.push_back(*begin);
-        }
-        unlock();
-    }
+    // template <typename Iterator>
+    //  void bulk_push(Iterator begin, Iterator end) {
+    //     lock();
+    //     for (; begin != end; ++begin) {
+    //         m_buffer.push_back(*begin);
+    //     }
+    //     unlock();
+    // }
 
-    inline T& pick() {
+    T& pick() {
         return m_buffer.front();
     }
 
-    inline void pop() {
+    void pop() {
         m_buffer.pop_front();
     }
 
-    inline bool active() const {
+    bool active() const {
         return m_open;
     }
 
-    inline bool empty() const {
+    bool empty() const {
         return m_buffer.empty();
     }
 
-    inline size_t size() const {
+    size_t size() const {
         return m_buffer.size();
     }
 
@@ -230,9 +218,9 @@ struct semi_sync_queue {
         return m_buffer.end();
     }
 
-    auto& mutex() {
-        return m_mutex;
-    }
+    // auto& mutex() {
+    //     return m_mutex;
+    // }
 
     void release() {
         std::deque<T>().swap(m_buffer);
@@ -243,4 +231,5 @@ private:
     std::deque<T> m_buffer;
     bool m_open;
 };
+
 }  // namespace tongrams

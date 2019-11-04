@@ -24,7 +24,8 @@ struct last {
         , m_tmp_data(tmp_data)
         , m_stats(stats)
         , m_tmp_stats(tmp_stats)
-        , m_record_size(ngrams_block<payload>::record_size(config.max_order, 1))
+        , m_record_size(
+              ngrams_block<count_type>::record_size(config.max_order, 1))
         , m_pointers(config.max_order - 1, 0)
         , m_probs(config.max_order, float_vector_type(0))
         , m_index_builder(config.max_order, config, stats)

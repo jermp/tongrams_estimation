@@ -49,7 +49,7 @@ struct writer {
         m_buffer.init();
         m_buffer.reserve(BLOCK_BITS);
 
-        auto explicit_write = [&](pointer const& ptr) {
+        auto explicit_write = [&](ngram_pointer_type const& ptr) {
             for (int i = 0; i < N; ++i) {
                 m_buffer.append_bits(ptr[i], w);
             }
@@ -126,7 +126,7 @@ private:
 struct cache {
     cache() : pos(nullptr), m_begin(nullptr), m_data(0, 0) {}
 
-    cache(uint8_t N) : m_data(ngrams_block<payload>::record_size(N, 1), 0) {
+    cache(uint8_t N) : m_data(ngrams_block<count_type>::record_size(N, 1), 0) {
         init();
     }
 
@@ -248,7 +248,7 @@ struct ngrams_block {
         }
 
         inline auto operator*() const {
-            pointer ptr;
+            ngram_pointer_type ptr;
             ptr.data = reinterpret_cast<word_id*>(m_back.begin());
             return ptr;
         }
@@ -274,7 +274,7 @@ struct ngrams_block {
 
         void decode_value() {
             m_back.store(reinterpret_cast<uint8_t const*>(m_it), m_v);
-            m_back.pos += sizeof(payload);
+            m_back.pos += sizeof(count_type);
             m_it += m_v;
         }
 
@@ -324,7 +324,7 @@ struct ngrams_block {
     };
 
     typedef fc_iterator iterator;
-    typedef ngram_pointer<payload> pointer;
+    typedef ngram_pointer_type pointer;
 
     ngrams_block(uint8_t N, size_t size, uint8_t w, uint8_t v)
         : prd(false), m_size(size), m_N(N), m_w(w), m_v(v) {}
@@ -341,11 +341,11 @@ struct ngrams_block {
         auto it = begin;
 
         size_t record_bytes =
-            tongrams::ngrams_block<payload>::record_size(m_N, 1);
+            tongrams::ngrams_block<count_type>::record_size(m_N, 1);
         cache prev(m_N);
         prev.init();
         prev.store(reinterpret_cast<uint8_t const*>((*it).data), record_bytes);
-        pointer prev_ptr;
+        ngram_pointer_type prev_ptr;
         prev_ptr.data = reinterpret_cast<word_id*>(prev.begin());
 
         ++it;

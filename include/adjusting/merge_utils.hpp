@@ -36,22 +36,17 @@ template <typename T, typename C>
 struct min_heap {
     min_heap() {}
 
-    min_heap(uint64_t k, C const& comparator) {
-        init(k, comparator);
+    min_heap(C const& comparator) {
+        init(comparator);
     }
 
-    void init(uint64_t k, C const& comparator) {
-        m_k = k;
+    void init(C const& comparator) {
         m_comparator = comparator;
     }
 
-    bool insert(T t) {
-        if (m_q.size() < m_k) {
-            m_q.push_back(t);
-            std::push_heap(m_q.begin(), m_q.end(), m_comparator);
-            return true;
-        }
-        return false;
+    void push(T const& t) {
+        m_q.push_back(t);
+        std::push_heap(m_q.begin(), m_q.end(), m_comparator);
     }
 
     T& top() {
@@ -79,10 +74,6 @@ struct min_heap {
         return m_q.size();
     }
 
-    inline uint64_t k() const {
-        return m_k;
-    }
-
     void print() const {
         for (auto x : m_q) {
             std::cout << x << " ";
@@ -91,7 +82,6 @@ struct min_heap {
     }
 
 private:
-    uint64_t m_k;
     std::vector<T> m_q;
     C m_comparator;
 
@@ -99,13 +89,12 @@ private:
         assert(pos <= size());
         while (2 * pos + 1 < size()) {
             uint64_t i = 2 * pos + 1;
-            if (i + 1 < size() and m_comparator(m_q[i], m_q[i + 1])) {
-                ++i;
-            }
-            if (not m_comparator(m_q[pos], m_q[i])) break;
+            if (i + 1 < size() and m_comparator(m_q[i], m_q[i + 1])) ++i;
+            if (!m_comparator(m_q[pos], m_q[i])) break;
             std::swap(m_q[pos], m_q[i]);
             pos = i;
         }
     }
 };
+
 }  // namespace tongrams

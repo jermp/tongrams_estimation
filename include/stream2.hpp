@@ -122,6 +122,10 @@ struct uncompressed_stream_generator
             util::async_call(uncompressed_stream_generator::fetch, num_bytes);
     }
 
+    void fetch_next_block(size_t num_bytes) {
+        fetch(num_bytes);
+    }
+
     void sync_fetch_next_blocks(uint64_t num_blocks, size_t num_bytes) {
         for (uint64_t i = 0; i < num_blocks; ++i) {
             fetch(num_bytes);
@@ -204,6 +208,10 @@ struct compressed_stream_generator
     void async_fetch_next_block(size_t /*bytes*/) {
         util::wait(m_handle_ptr);
         m_handle_ptr = util::async_call(compressed_stream_generator::fetch);
+    }
+
+    void fetch_next_block(size_t /*num_bytes*/) {
+        fetch();
     }
 
     void sync_fetch_next_blocks(uint64_t num_blocks, size_t /*num_bytes*/) {

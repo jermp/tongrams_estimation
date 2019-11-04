@@ -176,7 +176,7 @@ struct statistics {
         configuration const& m_config;
         tmp::statistics& m_tmp_stats;
         tmp::data& m_tmp_data;
-        ngram_cache<payload> m_ngram_cache;
+        ngram_cache<count_type> m_ngram_cache;
         std::vector<counts> m_t;
         std::vector<floats> m_D;
         counts m_num_ngrams;

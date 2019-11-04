@@ -74,7 +74,7 @@ private:
         //     std::cerr << std::endl;
         // }
 
-        std::vector<pointer> tmp_index(n);
+        std::vector<ngram_pointer_type> tmp_index(n);
         task_region(*(p.executor), [&](task_region_handle& trh) {
             for (uint64_t i = 0; i < m_num_threads; ++i) {
                 trh.run([&, i] {
