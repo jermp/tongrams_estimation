@@ -3,11 +3,9 @@
 #include "constants.hpp"
 
 namespace tongrams {
-
 namespace hash_utils {
 
 /*
-    NOTE:
     This code is an adaptation from
     https://github.com/aappleby/smhasher/blob/master/src/MurmurHash2.cpp
         by Austin Appleby
@@ -141,9 +139,7 @@ uint64_t hash_bytes64(byte_range const& br) {
 }
 
 static const uint64_t hash_empty = hash_bytes64(constants::empty_byte_range);
-
 static const iterator invalid_iterator = iterator(-1);
-
 static const float probing_space_multiplier = 1.5;
 
 struct linear_prober {
@@ -155,7 +151,7 @@ struct linear_prober {
     }
 
     inline iterator operator*() {
-        fall_back();
+        if (m_h == m_universe) m_h = 0;  // fall back
         return m_h;
     }
 
@@ -166,67 +162,6 @@ struct linear_prober {
 private:
     iterator m_h;
     uint64_t m_universe;
-
-    inline void fall_back() {
-        if (m_h == m_universe) {
-            m_h = 0;
-        }
-    }
-};
-
-struct quadratic_prober {
-    quadratic_prober() {}
-
-    inline void init(iterator h, uint64_t universe) {
-        m_i = 0;
-        m_h = h % universe;
-        m_universe = universe;
-    }
-
-    inline iterator operator*() {
-        return (m_h + c_1 * m_i + c_2 * m_i * m_i) % m_universe;
-    }
-
-    inline void operator++() {
-        ++m_i;
-    }
-
-    static const uint64_t c_1 = 1;
-    static const uint64_t c_2 = 3;
-
-private:
-    uint64_t m_i;
-    iterator m_h;
-    uint64_t m_universe;
-};
-
-struct double_hash_prober {
-    double_hash_prober() {}
-
-    inline void init(iterator h, uint64_t universe) {
-        m_h = h % universe;
-        m_jump = c * secondary_hash(h);
-        m_universe = universe;
-    }
-
-    inline iterator operator*() {
-        return m_h % m_universe;
-    }
-
-    inline void operator++() {
-        m_h += m_jump;
-    }
-
-    static const uint64_t c = 1;
-
-private:
-    iterator m_h;
-    uint64_t m_jump;
-    uint64_t m_universe;
-
-    inline uint64_t secondary_hash(iterator it) {
-        return 13 * it + 47;
-    }
 };
 
 }  // namespace hash_utils
