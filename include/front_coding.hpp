@@ -5,20 +5,11 @@
 
 #include <fstream>
 
-/*
-
-    byte-aligned version
-
-*/
-
 namespace tongrams {
-
 namespace fc {
 
-const static std::streamsize BLOCK_BYTES =
-    64 * 1024 * 1024;  // 64MB by default
-                       // 1 * 1024 * 1024;
-const static std::streamsize BLOCK_BITS = 8 * BLOCK_BYTES;
+const static std::streamsize BLOCK_BYTES = 64 * essentials::MiB;
+const static std::streamsize BLOCK_BITS = BLOCK_BYTES * 8;
 
 template <typename Comparator>
 struct writer {
@@ -419,5 +410,6 @@ private:
     uint8_t m_N;
     uint8_t m_w, m_v;
 };
+
 }  // namespace fc
 }  // namespace tongrams

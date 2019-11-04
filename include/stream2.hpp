@@ -8,7 +8,6 @@ namespace tongrams {
 namespace stream {
 
 typedef stream::ngrams_block_partition uncompressed_block_type;
-
 typedef fc::ngrams_block<context_order_comparator_type> compressed_block_type;
 
 template <typename Block>
@@ -46,24 +45,18 @@ struct async_ngrams_file_source {
         std::remove(m_filename.c_str());
     }
 
-    auto* get() {
-        if (empty()) {
-            util::wait(m_handle_ptr);
-        }
-
+    Block* get() {
+        if (empty()) util::wait(m_handle_ptr);
         assert(size());
         Block* ptr = nullptr;
         size_t processed_blocks = 0;
         for (auto& x : m_buffer) {
             if (not x.prd) {
-                if (not ptr) {
-                    ptr = &x;
-                }
+                if (!ptr) ptr = &x;
             } else {
                 ++processed_blocks;
             }
         }
-
         assert(m_buffer.size() >= processed_blocks);
         m_buffer_size = m_buffer.size() - processed_blocks;
         return ptr;
@@ -126,12 +119,6 @@ struct uncompressed_stream_generator
         fetch(num_bytes);
     }
 
-    void sync_fetch_next_blocks(uint64_t num_blocks, size_t num_bytes) {
-        for (uint64_t i = 0; i < num_blocks; ++i) {
-            fetch(num_bytes);
-        }
-    }
-
     double I_time() const {
         return m_I_time;
     }
@@ -148,32 +135,19 @@ private:
     double m_I_time;
 
     std::function<void(size_t)> fetch = [&](size_t bytes) {
-        if (eos()) {
-            return;
-        }
-
+        if (eos()) return;
         auto s = clock_type::now();
-        uncompressed_block_type block(m_N, m_num_values);
+        block_type block(m_N, m_num_values);
         block.range.begin = 0;
-
         if (m_read_bytes + bytes > m_file_size) {
             bytes = m_file_size - m_read_bytes;
         }
         m_read_bytes += bytes;
-
-        if (m_read_bytes == m_file_size) {
-            m_eos = true;
-            block.eos = true;
-        }
-
+        if (m_read_bytes == m_file_size) m_eos = true;
         assert(bytes % block.record_size() == 0);
         block.range.end = bytes / block.record_size();
-
-        auto begin = block.initialize_memory(bytes);
-        auto end = block.read_bytes(m_is, begin, bytes);
-        assert(end == begin + bytes);
-        (void)end;
-
+        char* begin = block.initialize_memory(bytes);
+        block.read_bytes(m_is, begin, bytes);
         m_buffer.push_back(std::move(block));
         ++m_buffer_size;
         auto e = clock_type::now();
@@ -200,24 +174,16 @@ struct compressed_stream_generator
         async_ngrams_file_source::open(filename);
         essentials::load_pod(m_is, m_w);
         essentials::load_pod(m_is, m_v);
-        // std::cerr << "read m_w = " << int(m_w) << std::endl;
-        // std::cerr << "read m_v = " << int(m_v) << std::endl;
         m_read_bytes = sizeof(m_w) + sizeof(m_v);
     }
 
-    void async_fetch_next_block(size_t /*bytes*/) {
+    void async_fetch_next_block(size_t /*num_bytes*/) {
         util::wait(m_handle_ptr);
         m_handle_ptr = util::async_call(compressed_stream_generator::fetch);
     }
 
     void fetch_next_block(size_t /*num_bytes*/) {
         fetch();
-    }
-
-    void sync_fetch_next_blocks(uint64_t num_blocks, size_t /*num_bytes*/) {
-        for (uint64_t i = 0; i < num_blocks; ++i) {
-            fetch();
-        }
     }
 
     double I_time() const {
@@ -237,9 +203,7 @@ private:
     double m_I_time;
 
     std::function<void(void)> fetch = [&]() {
-        if (eos()) {
-            return;
-        }
+        if (eos()) return;
 
         auto s = clock_type::now();
 
@@ -247,19 +211,16 @@ private:
         essentials::load_pod(m_is, size);
         m_read_bytes += sizeof(size);
         // std::cerr << "read m_size = " << size << std::endl;
-        assert(size);
+        assert(size > 0);
 
-        compressed_block_type block(m_N, size, m_w, m_v);
-
+        block_type block(m_N, size, m_w, m_v);
         size_t bytes = fc::BLOCK_BYTES;
         if (m_read_bytes + bytes > m_file_size) {
             bytes = m_file_size - m_read_bytes;
         }
 
         m_read_bytes += bytes;
-        if (m_read_bytes == m_file_size) {
-            m_eos = true;
-        }
+        if (m_read_bytes == m_file_size) m_eos = true;
 
         block.read(m_is, bytes);
 

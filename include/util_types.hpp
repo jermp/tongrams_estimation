@@ -181,15 +181,6 @@ struct semi_sync_queue {
         m_buffer.push_back(std::move(val));
     }
 
-    // template <typename Iterator>
-    //  void bulk_push(Iterator begin, Iterator end) {
-    //     lock();
-    //     for (; begin != end; ++begin) {
-    //         m_buffer.push_back(*begin);
-    //     }
-    //     unlock();
-    // }
-
     T& pick() {
         return m_buffer.front();
     }
@@ -217,10 +208,6 @@ struct semi_sync_queue {
     auto end() {
         return m_buffer.end();
     }
-
-    // auto& mutex() {
-    //     return m_mutex;
-    // }
 
     void release() {
         std::deque<T>().swap(m_buffer);

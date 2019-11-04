@@ -59,12 +59,12 @@ struct adjusting {
         }
         assert(m_load_size % m_record_size == 0);
 
-        for (auto const& fn : filenames) {
+        for (auto const& filename : filenames) {
             m_stream_generators.emplace_back(m_config.max_order, 1);
-            auto& sg = m_stream_generators.back();
-            sg.open(fn);
-            assert(sg.size() == 0);
-            sg.fetch_next_block(m_load_size);
+            auto& gen = m_stream_generators.back();
+            gen.open(filename);
+            assert(gen.size() == 0);
+            gen.fetch_next_block(m_load_size);
         }
 
         size_t vocab_size = m_stats.num_ngrams(1);
@@ -214,18 +214,18 @@ struct adjusting {
 
             if (top.range.begin == top.range.end) {
                 // std::cerr << "block exhausted" << std::endl;
-                auto& sg = m_stream_generators[top.index];
-                auto* ptr = sg.get();
+                auto& gen = m_stream_generators[top.index];
+                auto* ptr = gen.get();
                 assert(ptr);
-                sg.processed(ptr);
-                sg.release_processed_blocks();
+                gen.processed(ptr);
+                gen.release_processed_blocks();
 
-                if (sg.empty() and sg.eos()) {
-                    sg.close_and_remove();
+                if (gen.empty() and gen.eos()) {
+                    gen.close_and_remove();
                     m_cursors.pop();
                 } else {
-                    sg.fetch_next_block(m_load_size);
-                    auto* ptr = sg.get();
+                    gen.fetch_next_block(m_load_size);
+                    auto* ptr = gen.get();
                     assert(ptr);
                     ptr->materialize_index(1);
                     assert(
@@ -262,19 +262,9 @@ struct adjusting {
 
         m_CPU_time -= m_total_time_waiting_for_disk;
 
-        // double max_read_IO_time = 0.0;
-        // double sum = 0.0;
         for (auto& sg : m_stream_generators) {
-            // m_I_time += sg.IO_time();
             m_I_time += sg.I_time();
-            // std::cerr << "read IO time: " << sg.IO_time() << " [sec]" <<
-            // std::endl; if (sg.IO_time() > max_read_IO_time) {
-            //     max_read_IO_time = sg.IO_time();
-            // }
         }
-        // std::cerr << "sum of read IO times = " << sum << " [sec]" <<
-        // std::endl; std::cerr << "max_read_IO_time = " << max_read_IO_time <<
-        // " [sec]" << std::endl; m_I_time = sum;
 
         start = clock_type::now();
         m_stats_builder.build(m_stats);

@@ -417,4 +417,5 @@ private:
     bytes_block m_data;
     bool m_empty;
 };
+
 }  // namespace tongrams

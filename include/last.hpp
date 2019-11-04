@@ -366,7 +366,7 @@ struct last {
 
         std::vector<float_vector_type>().swap(m_probs);
 
-        m_stream_generator.close();  // close but no not destroy
+        m_stream_generator.close();  // close but do not destroy
 
         // m_index_builder.print_stats();
         essentials::logger("compressing index");

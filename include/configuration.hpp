@@ -8,8 +8,7 @@ namespace tongrams {
 
 struct configuration {
     configuration()
-        : block_size(0.5 * essentials::MB)
-        , text_chunk_size(1 * essentials::GB)
+        : text_chunk_size(1 * essentials::GiB)
         , max_order(5)
         , num_threads(std::thread::hardware_concurrency())
         , tmp_dirname(constants::default_tmp_dirname)
@@ -23,9 +22,8 @@ struct configuration {
 
     uint64_t RAM;
     uint64_t page_size;
-    uint64_t block_size;
     uint64_t text_chunk_size;
-    uint64_t max_order;  // <--- TODO: change this name to N
+    uint64_t max_order;
     uint64_t num_threads;
     uint64_t text_size;
     std::string tmp_dirname;

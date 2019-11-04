@@ -82,9 +82,6 @@ struct trie_level {
         return m_size;
     }
 
-    // void print_stats(uint8_t order,
-    //                  pointer_sequence<Pointers> const* ranges) const;
-
     size_t grams_bytes() const {
         return m_words_ids.bytes();
     }
