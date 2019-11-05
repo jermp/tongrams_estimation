@@ -43,9 +43,9 @@ struct ngrams_block_statistics {
     uint64_t max_count;
 };
 
-template <typename Value, typename Index = std::vector<ngram_pointer<Value>>>
+template <typename Value>
 struct ngrams_block {
-    typedef typename Index::iterator iterator;
+    typedef typename std::vector<ngram_pointer<Value>>::iterator iterator;
 
     struct allocator {
         allocator() : m_offset(0), m_alignment(0) {}
@@ -190,12 +190,10 @@ struct ngrams_block {
 
     template <typename Iterator>
     void set(uint64_t pos, Iterator begin, Iterator end, Value const& value) {
-#ifdef LSD_RADIX_SORT
-        assert(pos < size());
-#endif
         auto ptr = m_allocator.allocate(m_memory, pos);
         m_allocator.construct(ptr, begin, end, value);
 #ifdef LSD_RADIX_SORT
+        assert(pos < size());
         m_index[pos] = ptr;
 #endif
     }
@@ -216,19 +214,28 @@ struct ngrams_block {
         return m_allocator.order();
     }
 
-    // random access with pointers
-    inline auto& operator[](size_t i) {
+    inline ngram_pointer<Value> operator[](size_t i) {
         assert(i < size());
         return m_index[i];
     }
 
-    // random access with indexes
-    inline auto access(size_t i) {
+    inline ngram_pointer<Value> access(size_t i) {
         uint64_t offset = i * record_size();
         assert(offset < m_memory.size());
         ngram_pointer<Value> ptr;
         ptr.data = reinterpret_cast<word_id*>(m_memory.data() + offset);
         return ptr;
+    }
+
+    inline typename Value::value_type& value(size_t i) {
+#ifdef LSD_RADIX_SORT
+        return m_index[i].value(order())->value;
+#else
+        uint64_t offset = i * record_size();
+        assert(offset < m_memory.size());
+        word_id* data = reinterpret_cast<word_id*>(m_memory.data() + offset);
+        return reinterpret_cast<Value*>(data + order())->value;
+#endif
     }
 
     inline iterator begin() {
@@ -282,16 +289,16 @@ struct ngrams_block {
         return ret;
     }
 
-    auto& memory() {
-        return m_memory;
-    }
+    // auto& memory() {
+    //     return m_memory;
+    // }
 
-    void steal(ngrams_block<Value, Index>& other) {
+    void steal(ngrams_block<Value>& other) {
         m_memory.swap(other.m_memory);
         m_index.swap(other.m_index);
     }
 
-    void swap(ngrams_block<Value, Index>& other) {
+    void swap(ngrams_block<Value>& other) {
         steal(other);
         m_allocator.swap(other.m_allocator);
         std::swap(stats.max_word_id, other.stats.max_word_id);
@@ -301,9 +308,9 @@ struct ngrams_block {
     ngrams_block_statistics stats;
 
 protected:
-    std::vector<uint8_t> m_memory;  // memory
-    allocator m_allocator;          // allocator
-    Index m_index;                  // memory index
+    std::vector<uint8_t> m_memory;
+    allocator m_allocator;
+    std::vector<ngram_pointer<Value>> m_index;
 };
 
 template <typename Value>

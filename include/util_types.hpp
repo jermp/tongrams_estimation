@@ -51,6 +51,8 @@ struct adaptor {
 
 template <typename UintType>
 struct payload_container {
+    typedef UintType value_type;
+
     payload_container() {}
     payload_container(UintType x) : value(x) {}
 

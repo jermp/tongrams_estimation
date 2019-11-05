@@ -49,8 +49,9 @@ struct ngrams_hash_block {
 
         while (m_data[it] != invalid_ngram_id) {
             assert(it < buckets());
-            if (m_equal_to(this->operator[](m_data[it]).data, &(key.data[0]),
-                           m_num_bytes)) {
+            bool equal = m_equal_to(pointer(m_data[it]).data, key.data.data(),
+                                    m_num_bytes);
+            if (equal) {
                 at = m_data[it];
                 return true;
             }
@@ -73,9 +74,10 @@ struct ngrams_hash_block {
     }
 
     template <typename Comparator>
-    void sort(Comparator const& cmp) {
+    void sort(Comparator const& comparator) {
         std::cerr << "block size = " << m_size << std::endl;
 #ifdef LSD_RADIX_SORT
+        (void)comparator;
         auto begin = m_block.begin();
         auto end = begin + size();
         uint32_t max_digit = statistics().max_word_id;
@@ -88,27 +90,30 @@ struct ngrams_hash_block {
         assert(m_block.template is_sorted<Comparator>(begin, end));
 #else
         m_index.resize(size());
-        for (size_t i = 0; i != size(); ++i) {
-            m_index[i] = i;
-        }
-
+        for (size_t i = 0; i != size(); ++i) m_index[i] = i;
 #ifdef __APPLE__
         std::sort
 #else
         __gnu_parallel::sort
 #endif
-            (m_index.begin(), m_index.end(), [&](auto const& i, auto const& j) {
-                return cmp(m_block.access(i), m_block.access(j));
+            (m_index.begin(), m_index.end(), [&](size_t i, size_t j) {
+                return comparator(m_block.access(i), m_block.access(j));
             });
 #endif
     }
 
-    inline auto operator[](ngram_id at) {
+    inline auto pointer(ngram_id at) {
+        assert(at < size());
 #ifdef LSD_RADIX_SORT
         return m_block[at];
 #else
         return m_block.access(at);
 #endif
+    }
+
+    inline typename Value::value_type& operator[](ngram_id at) {
+        assert(at < size());
+        return m_block.value(at);
     }
 
     inline uint64_t size() const {
@@ -162,9 +167,9 @@ struct ngrams_hash_block {
 
         auto operator*() {
 #ifdef LSD_RADIX_SORT
-            return m_block[m_pos];
+            return m_block.pointer(m_pos);
 #else
-            return m_block[m_index[m_pos]];
+            return m_block.pointer(m_index[m_pos]);
 #endif
         }
 
@@ -197,10 +202,8 @@ struct ngrams_hash_block {
 private:
     uint64_t m_size;
     size_t m_num_bytes;
-
     Prober m_prober;
     EqualPred m_equal_to;
-
     std::vector<ngram_id> m_data;
     ngrams_block<Value> m_block;
     std::vector<ngram_id> m_index;

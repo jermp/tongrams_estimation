@@ -21,9 +21,10 @@ struct counting_reader {
             0.9 * config.RAM / 2 /
             (ngram::size_of(config.max_order) + count_type::size_of()
 #ifdef LSD_RADIX_SORT
-             + 8  // pointers
+             + sizeof(word_id*)  // for ngram_pointer(s)
 #endif
-             + 4 * hash_utils::probing_space_multiplier  // hashset
+             +
+             sizeof(ngram_id) * hash_utils::probing_space_multiplier  // hashset
             );
     }
 
@@ -134,8 +135,7 @@ private:
         ngram_id at;
         bool found = m_counts.find_or_insert(m_window.get(), hash, at);
         if (found) {
-            auto ptr = m_counts[at];
-            auto count = ++(ptr.value(m_max_order)->value);
+            auto count = ++m_counts[at];
             auto& max_count = m_counts.statistics().max_count;
             if (count > max_count) max_count = count;
         }
