@@ -13,25 +13,21 @@ struct ngram_pointer {
         return data[i];
     }
 
-    inline Value* value(uint8_t ngram_order, uint64_t i = 0) const {
-        return reinterpret_cast<Value*>(data + ngram_order) + i;
+    inline Value* value(uint8_t ngram_order) const {
+        return reinterpret_cast<Value*>(data + ngram_order);
     }
 
-    // check if the ngram data is equal to another
-    // in the range data[begin, end)
     inline bool equal_to(ngram_pointer<Value> const& other, size_t begin,
                          size_t end) const {
         return memcmp(other.data + begin, this->data + begin,
                       (end - begin) * sizeof(word_id)) == 0;
     }
 
-    void print(uint8_t ngram_order, uint64_t num_values) const {
+    void print(uint8_t ngram_order) const {
         for (uint8_t i = 0; i < ngram_order; ++i) {
             std::cerr << data[i] << " ";
         }
-        for (uint64_t i = 0; i < num_values; ++i) {
-            (value(ngram_order, i))->print();
-        }
+        value(ngram_order)->print();
         std::cerr << "\n";
     }
 
@@ -64,46 +60,31 @@ struct ngrams_block {
             m_alignment = ngram::size_of(ngram_order);
         }
 
-        void resize(Memory& memory, uint64_t num_ngrams, uint64_t num_values) {
-            memory.resize((m_alignment + Value::size_of() * num_values) *
-                          num_ngrams);
+        void resize(Memory& memory, uint64_t num_ngrams) {
+            memory.resize((m_alignment + Value::size_of()) * num_ngrams);
         }
 
         template <typename Iterator>
         void construct(ngram_pointer<Value>& ptr, Iterator begin, Iterator end,
-                       Value const& value,
-                       uint64_t value_offset)  // offset at which we set value
-        {
+                       Value value) {
             uint64_t n = 0;
             for (; begin != end; ++n, ++begin) {
                 ptr.data[n] = *begin;
             }
-            *(ptr.value(n, value_offset)) = value;
+            *(ptr.value(n)) = value;
         }
 
-        template <typename Iterator>
-        void construct(ngram_pointer<Value>& ptr, Iterator begin, size_t n,
-                       Value const& value,
-                       uint64_t value_offset)  // offset at which we set value
-        {
-            for (size_t i = 0; i < n; ++i, ++begin) {
-                ptr.data[i] = *begin;
-            }
-            *(ptr.value(n, value_offset)) = value;
-        }
-
-        auto allocate(Memory& memory, uint64_t num_values) {
+        auto allocate(Memory& memory) {
             assert(m_offset < memory.size());
             ngram_pointer<Value> ptr;
             ptr.data = reinterpret_cast<word_id*>(&memory[m_offset]);
-            m_offset += m_alignment + Value::size_of() * num_values;
+            m_offset += m_alignment + Value::size_of();
             return ptr;
         }
 
         // NOTE: pos is an index, not an offset
-        auto allocate(Memory& memory, uint64_t num_values, uint64_t pos) {
-            uint64_t offset =
-                pos * (m_alignment + Value::size_of() * num_values);
+        auto allocate(Memory& memory, uint64_t pos) {
+            uint64_t offset = pos * (m_alignment + Value::size_of());
             assert(offset < memory.size());
             ngram_pointer<Value> ptr;
             ptr.data = reinterpret_cast<word_id*>(&memory[offset]);
@@ -137,21 +118,21 @@ struct ngrams_block {
 
     ngrams_block() {}
 
-    ngrams_block(uint8_t ngram_order, uint64_t num_values) {
-        init(ngram_order, num_values);
+    ngrams_block(uint8_t ngram_order) {
+        init(ngram_order);
     }
 
     ngrams_block(ngrams_block&& rhs) {
         *this = std::move(rhs);
     }
 
-    void init(uint8_t ngram_order, uint64_t num_values) {
+    void init(uint8_t ngram_order) {
         stats = {0, 0};
         m_memory.resize(0);
         m_allocator.init(ngram_order);
         m_index.resize(0);
-        m_record_size = ngrams_block<Value, Memory, Index>::record_size(
-            ngram_order, num_values);
+        m_record_size =
+            ngrams_block<Value, Memory, Index>::record_size(ngram_order);
     }
 
     inline ngrams_block& operator=(ngrams_block&& rhs) {
@@ -171,14 +152,13 @@ struct ngrams_block {
     };
 
     // TODO: change name in size_of
-    static size_t record_size(uint8_t ngram_order, uint64_t num_values) {
-        return ngram::size_of(ngram_order) + Value::size_of() * num_values;
+    static size_t record_size(uint8_t order) {
+        return ngram::size_of(order) + Value::size_of();
     }
 
-    void resize_memory(uint64_t num_ngrams, uint64_t num_values) {
-        m_allocator.resize(m_memory, num_ngrams, num_values);
-        m_record_size =
-            ngrams_block<Value, Memory>::record_size(order(), num_values);
+    void resize_memory(uint64_t num_ngrams) {
+        m_allocator.resize(m_memory, num_ngrams);
+        m_record_size = ngrams_block<Value, Memory>::record_size(order());
     }
 
     void reserve_index(uint64_t num_ngrams) {
@@ -197,7 +177,7 @@ struct ngrams_block {
         ngrams_block<Value, Memory>().swap(*this);
     }
 
-    void materialize_index(uint64_t num_ngrams, uint64_t num_values) {
+    void materialize_index(uint64_t num_ngrams) {
         std::cerr << "m_index size before materializing index: "
                   << m_index.size() << std::endl;
         m_index.clear();
@@ -207,7 +187,7 @@ struct ngrams_block {
         m_index.reserve(n);
         assert(m_memory.size());
         for (uint64_t i = 0; i < num_ngrams; ++i) {
-            auto ptr = m_allocator.allocate(m_memory, num_values, i);
+            auto ptr = m_allocator.allocate(m_memory, i);
             push_back(ptr);
         }
         assert(size() == num_ngrams);
@@ -218,38 +198,22 @@ struct ngrams_block {
     }
 
     template <typename Iterator>
-    void push_back(
-        Iterator begin, Iterator end, Value const& value,
-        uint64_t num_values = 1)  // NOTE: specify num. of values
-                                  // that we want to allocate; if > 1,
-                                  // value is copied to the last allocated
-    {
-        assert(num_values);
-        auto ptr = m_allocator.allocate(m_memory, num_values);
-        m_allocator.construct(ptr, begin, end, value, num_values - 1);
+    void push_back(Iterator begin, Iterator end, Value value) {
+        auto ptr = m_allocator.allocate(m_memory);
+        m_allocator.construct(ptr, begin, end, value);
         push_back(ptr);
     }
 
     template <typename Iterator>
-    void set(uint64_t pos, Iterator begin, Iterator end, Value const& value,
-             uint64_t num_values = 1) {
-        assert(num_values > 0);
+    void set(uint64_t pos, Iterator begin, Iterator end, Value const& value) {
 #ifdef LSD_RADIX_SORT
         assert(pos < size());
 #endif
-        auto ptr = m_allocator.allocate(m_memory, num_values, pos);
-        m_allocator.construct(ptr, begin, end, value, num_values - 1);
+        auto ptr = m_allocator.allocate(m_memory, pos);
+        m_allocator.construct(ptr, begin, end, value);
 #ifdef LSD_RADIX_SORT
         m_index[pos] = ptr;
 #endif
-    }
-
-    template <typename Iterator>
-    void set(uint64_t pos, Iterator begin, size_t n, Value const& value,
-             uint64_t num_values = 1) {
-        assert(num_values > 0);
-        auto ptr = m_allocator.allocate(m_memory, num_values, pos);
-        m_allocator.construct(ptr, begin, n, value, num_values - 1);
     }
 
     void print_allocator_stats() const {
@@ -266,10 +230,6 @@ struct ngrams_block {
 
     inline uint8_t order() const {
         return m_allocator.order();
-    }
-
-    uint8_t num_values() const {
-        return (m_record_size - order() * sizeof(word_id)) / Value::size_of();
     }
 
     // random access with pointers
@@ -323,32 +283,24 @@ struct ngrams_block {
         auto prev = *it;
         ++it;
         bool ret = true;
-        // uint64_t sum = 0;
         for (size_t i = 1; it != end; ++i, ++it) {
             auto curr = *it;
-            // curr.print(5,1);
-            // sum += (curr.value(N))->value;
-            // util::do_not_optimize_away(curr);
             int cmp = comparator.compare(prev, curr);
-
             if (cmp == 0) {
                 std::cerr << "Error at " << i << "/" << size() << ":\n";
-                prev.print(order(), 0);
-                curr.print(order(), 0);
+                prev.print(N);
+                curr.print(N);
                 std::cerr << "Repeated ngrams" << std::endl;
             }
-
             if (cmp > 0) {
                 std::cerr << "Error at " << i << "/" << size() << ":\n";
-                prev.print(order(), 0);
-                curr.print(order(), 0);
+                prev.print(N);
+                curr.print(N);
                 std::cerr << std::endl;
-                // return false;
                 ret = false;
             }
             prev = curr;
         }
-        // std::cerr << sum << std::endl;
         return ret;
     }
 
@@ -384,12 +336,12 @@ struct ngram_cache {
 
     typedef ngram_pointer<Value> pointer;
 
-    ngram_cache(uint8_t N, uint8_t M) {
-        init(N, M);
+    ngram_cache(uint8_t order) {
+        init(order);
     }
 
-    void init(uint8_t N, uint8_t M) {
-        m_data.resize(ngrams_block<Value>::record_size(N, M));
+    void init(uint8_t order) {
+        m_data.resize(ngrams_block<Value>::record_size(order));
         m_empty = true;
     }
 

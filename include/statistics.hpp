@@ -15,7 +15,7 @@ struct statistics {
             : m_config(config)
             , m_tmp_stats(tmp_stats)
             , m_tmp_data(tmp_data)
-            , m_ngram_cache(config.max_order, 1)
+            , m_ngram_cache(config.max_order)
             , m_t(config.max_order, counts(4, 0))
             , m_D(config.max_order, floats(4, 0))
             , m_num_ngrams(config.max_order, 0)

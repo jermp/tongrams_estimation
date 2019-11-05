@@ -15,16 +15,16 @@ static const int invalid_id = -1;
 
 // NOTE: this class is useless, we can do everything with ngrams_block
 struct ngrams_block_partition : ngrams_block<count_type> {
-    ngrams_block_partition(uint8_t ngram_order, uint64_t num_values) {
-        init(ngram_order, num_values);
+    ngrams_block_partition(uint8_t ngram_order) {
+        init(ngram_order);
     }
 
     typedef count_type value;
     typedef ngram_pointer<count_type> pointer;
     typedef ngrams_block<count_type>::iterator ngrams_iterator;
 
-    void init(uint8_t ngram_order, uint64_t num_values) {
-        ngrams_block<count_type>::init(ngram_order, num_values);
+    void init(uint8_t ngram_order) {
+        ngrams_block<count_type>::init(ngram_order);
         range = {0, 0};
         prd = false;
     }
@@ -78,13 +78,13 @@ struct ngrams_block_partition : ngrams_block<count_type> {
         return dest;
     }
 
-    void materialize_index(uint64_t num_values) {
+    void materialize_index() {
         m_index.clear();
         uint64_t num_ngrams = range.end - range.begin;
         m_index.reserve(num_ngrams);
         assert(m_memory.size() > 0);
         for (uint64_t i = range.begin; i != range.end; ++i) {
-            auto ptr = m_allocator.allocate(m_memory, num_values, i);
+            auto ptr = m_allocator.allocate(m_memory, i);
             push_back(ptr);
         }
         assert(size() == num_ngrams);
@@ -96,7 +96,7 @@ struct ngrams_block_partition : ngrams_block<count_type> {
 
 struct writer {
     writer(uint8_t N)
-        : m_record_size(ngrams_block<count_type>::record_size(N, 1)) {}
+        : m_record_size(ngrams_block<count_type>::record_size(N)) {}
 
     template <typename Iterator>
     void write_block(std::ofstream& os, Iterator begin, Iterator end, size_t,

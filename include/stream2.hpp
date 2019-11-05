@@ -98,12 +98,8 @@ struct uncompressed_stream_generator
 
     uncompressed_stream_generator() {}
 
-    uncompressed_stream_generator(uint8_t ngram_order, uint64_t num_values)
-        : m_num_values(num_values)
-        , m_read_bytes(0)
-        , m_N(ngram_order)
-        , m_eos(false)
-        , m_I_time(0.0) {}
+    uncompressed_stream_generator(uint8_t ngram_order)
+        : m_read_bytes(0), m_N(ngram_order), m_eos(false), m_I_time(0.0) {}
 
     void open(std::string const& filename) {
         async_ngrams_file_source::open(filename);
@@ -128,7 +124,6 @@ struct uncompressed_stream_generator
     }
 
 private:
-    uint64_t m_num_values;
     size_t m_read_bytes;
     uint8_t m_N;
     bool m_eos;
@@ -137,7 +132,7 @@ private:
     std::function<void(size_t)> fetch = [&](size_t bytes) {
         if (eos()) return;
         auto s = clock_type::now();
-        block_type block(m_N, m_num_values);
+        block_type block(m_N);
         block.range.begin = 0;
         if (m_read_bytes + bytes > m_file_size) {
             bytes = m_file_size - m_read_bytes;
@@ -162,7 +157,7 @@ struct compressed_stream_generator
 
     compressed_stream_generator() {}
 
-    compressed_stream_generator(uint8_t ngram_order, uint64_t /*num_values*/)
+    compressed_stream_generator(uint8_t ngram_order)
         : m_read_bytes(0)
         , m_N(ngram_order)
         , m_w(0)

@@ -37,7 +37,8 @@ struct counting_reader {
         assert(partition_begin <= partition_end);
 
         m_counts.init(m_config.max_order, m_num_ngrams_per_block,
-                      count_type(1));
+                      count_type(1)  // default value
+        );
 
         m_window.init({data + partition_begin, data + m_partition_end},
                       partition_begin);

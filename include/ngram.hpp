@@ -12,19 +12,6 @@ namespace constants {
 static const uint64_t invalid_hash = 0;
 }
 
-// namespace util {
-//     // NOTE: adapted from
-//     //
-//     http://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
-//     static uint64_t mix_hashes(std::vector<word_id> const& hashes) {
-//         uint64_t hash = 17;
-//         for (auto x: hashes) {
-//             hash = hash * 31 + x;
-//         }
-//         return hash;
-//     }
-// }
-
 struct ngram {
     ngram() {}
 
@@ -78,11 +65,11 @@ struct ngram {
         std::cout << std::endl;
     }
 
-    static ngram invalid(uint8_t n) {
-        std::vector<word_id> hashes(n, constants::invalid_hash);
-        ngram ng(hashes.begin(), n);
-        return ng;
-    }
+    // static ngram invalid(uint8_t n) {
+    //     std::vector<word_id> hashes(n, constants::invalid_hash);
+    //     ngram ng(hashes.begin(), n);
+    //     return ng;
+    // }
 
     static uint64_t size_of(uint8_t order) {
         return sizeof(word_id) * order;
@@ -113,18 +100,11 @@ struct ngram {
         return data.back();
     }
 
-    // TODO: use SIMD here??
     bool operator==(ngram const& other) const {
         return memcmp(other.data.data(), this->data.data(), size_of()) == 0;
     }
 
-    // void operator=(ngram const& other) {
-    //     memcpy(other.data.data(), this->data.data(), size_of());
-    // }
-
-    // 16 bytes of overhead :(, due to:
-    // - pointer to storage oh heap
-    // - size of std::vector
     std::vector<word_id> data;
 };
+
 }  // namespace tongrams

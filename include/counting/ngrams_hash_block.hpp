@@ -25,14 +25,14 @@ struct ngrams_hash_block {
         m_equal_to = equal_to;
         m_default_value = default_value;
         m_num_bytes = ngram_order * sizeof(word_id);
-        m_block.init(ngram_order, 1);
+        m_block.init(ngram_order);
         resize(size);
     }
 
     void resize(uint64_t size) {
         uint64_t buckets = size * hash_utils::probing_space_multiplier;
         m_data.resize(buckets, ngram_id(-1));
-        m_block.resize_memory(size, 1);
+        m_block.resize_memory(size);
 
 #ifdef LSD_RADIX_SORT
         m_block.resize_index(size);
@@ -102,23 +102,24 @@ struct ngrams_hash_block {
 #endif
     }
 
-    void write_index(std::ofstream& os) {
-#ifdef LSD_RADIX_SORT
-        auto begin = m_block.begin();
-        auto end = begin + size();
-        for (auto it = begin; it != end; ++it) {
-            os.write(reinterpret_cast<char const*>(it->data),
-                     (std::streamsize)(m_block.record_size()));
-        }
-#else
-        auto begin = m_index.begin();
-        auto end = begin + size();
-        std::for_each(begin, end, [&](ngram_id const& id) {
-            os.write(reinterpret_cast<char const*>(m_block.access(id).data),
-                     (std::streamsize)(m_block.record_size()));
-        });
-#endif
-    }
+    //     void write_index(std::ofstream& os) {
+    // #ifdef LSD_RADIX_SORT
+    //         auto begin = m_block.begin();
+    //         auto end = begin + size();
+    //         for (auto it = begin; it != end; ++it) {
+    //             os.write(reinterpret_cast<char const*>(it->data),
+    //                      (std::streamsize)(m_block.record_size()));
+    //         }
+    // #else
+    //         auto begin = m_index.begin();
+    //         auto end = begin + size();
+    //         std::for_each(begin, end, [&](ngram_id const& id) {
+    //             os.write(reinterpret_cast<char
+    //             const*>(m_block.access(id).data),
+    //                      (std::streamsize)(m_block.record_size()));
+    //         });
+    // #endif
+    //     }
 
     inline auto operator[](ngram_id at) {
 #ifdef LSD_RADIX_SORT

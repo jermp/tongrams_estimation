@@ -25,10 +25,7 @@ struct adjusting {
         , m_writer(config, constants::file_extension::merged)
         , m_comparator(config.max_order)
         , m_cursors(cursor_comparator_type(config.max_order))
-        , m_record_size(
-              ngrams_block<count_type>::record_size(config.max_order, 1))
-        , m_num_bytes(
-              ngrams_block<count_type>::record_size(config.max_order, 0))
+        , m_record_size(ngrams_block<count_type>::record_size(config.max_order))
 
         , m_CPU_time(0.0)
         , m_I_time(0.0)
@@ -62,7 +59,7 @@ struct adjusting {
         assert(m_load_size % m_record_size == 0);
 
         for (auto const& filename : filenames) {
-            m_stream_generators.emplace_back(m_config.max_order, 1);
+            m_stream_generators.emplace_back(m_config.max_order);
             auto& gen = m_stream_generators.back();
             gen.open(filename);
             assert(gen.size() == 0);
@@ -100,7 +97,7 @@ struct adjusting {
             auto& sg = m_stream_generators[k];
             auto* ptr = sg.get();
             assert(ptr);
-            ptr->materialize_index(1);
+            ptr->materialize_index();
             assert(ptr->template is_sorted<context_order_comparator_type>(
                 ptr->begin(), ptr->end()));
             cursor<typename input_block_type::iterator> c(ptr->begin(),
@@ -112,8 +109,8 @@ struct adjusting {
 
         uint64_t num_ngrams_per_block = m_load_size / m_record_size;
         uint8_t N = m_config.max_order;
-        adjusting_step::output_block_type result(N, 1);
-        result.resize_memory(num_ngrams_per_block, 1);
+        adjusting_step::output_block_type result(N);
+        result.resize_memory(num_ngrams_per_block);
         result.reserve_index(num_ngrams_per_block);
         result.range.begin = 0;
         auto& index = result.index();
@@ -155,20 +152,19 @@ struct adjusting {
             auto min = *(top.range.begin);
 
             // std::cerr << "min element: ";
-            // min.print(5, 1);
+            // min.print(N);
 
             if (!index.size()) {
                 result.push_back(min.data, min.data + N, *(min.value(N)));
                 ++num_Ngrams;
-
             } else {
-                bool equal =
-                    equal_pred(min.data, result.back().data, m_num_bytes);
+                auto& back = result.back();
+                bool equal = equal_pred(min.data, back.data, ngram::size_of(N));
 
                 if (not equal) {
                     bool greater =
                         compare_i<typename input_block_type::pointer>(
-                            min, result.back(), m_comparator.begin()) > 0;
+                            min, back, m_comparator.begin()) > 0;
 
                     if (num_Ngrams >= limit and greater) {
                         save_offsets();
@@ -177,11 +173,9 @@ struct adjusting {
                     if (index.size() == num_ngrams_per_block) {
                         compute_smoothing_statistics();
 
-#ifndef NDEBUG
                         assert(result.template is_sorted<
                                context_order_comparator_type>(result.begin(),
                                                               result.end()));
-#endif
 
                         auto start = clock_type::now();
                         while (m_writer.size() > 0)
@@ -193,8 +187,8 @@ struct adjusting {
                         m_writer.push(result);
 
                         // re-init result block
-                        result.init(N, 1);
-                        result.resize_memory(num_ngrams_per_block, 1);
+                        result.init(N);
+                        result.resize_memory(num_ngrams_per_block);
                         result.reserve_index(num_ngrams_per_block);
                         result.range.begin = 0;
                         assert(index.empty());
@@ -205,10 +199,14 @@ struct adjusting {
 
                 } else {
                     // combine the two values, by updating the one in result
-                    auto& back = result.back();
-                    auto const& combined_value = count_type::combine_values(
+                    // (*(back.value(N))).print();
+                    // (*(min.value(N))).print();
+                    auto combined_value = count_type::combine_values(
                         *(back.value(N)), *(min.value(N)));
                     *(back.value(N)) = combined_value;
+                    // std::cerr << "combined is: ";
+                    // combined_value.print();
+                    // std::cerr << std::endl;
                 }
             }
 
@@ -229,7 +227,7 @@ struct adjusting {
                     gen.fetch_next_block(m_load_size);
                     auto* ptr = gen.get();
                     assert(ptr);
-                    ptr->materialize_index(1);
+                    ptr->materialize_index();
                     assert(
                         ptr->template is_sorted<context_order_comparator_type>(
                             ptr->begin(), ptr->end()));
@@ -291,7 +289,6 @@ private:
         m_cursors;
 
     uint64_t m_record_size;
-    uint64_t m_num_bytes;
     uint64_t m_load_size;
 
     double m_CPU_time;

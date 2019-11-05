@@ -77,9 +77,9 @@ struct writer {
 
             } else {
                 // std::cerr << "prev_ptr: ";
-                // prev_ptr.print(5,1);
+                // prev_ptr.print(5);
                 // std::cerr << "ptr: ";
-                // ptr.print(5,1);
+                // ptr.print(5);
                 lcp = m_comparator.lcp(ptr, prev_ptr);
                 // std::cerr << "lcp = " << lcp << std::endl;
                 assert(lcp < N);
@@ -117,7 +117,7 @@ private:
 struct cache {
     cache() : pos(nullptr), m_begin(nullptr), m_data(0, 0) {}
 
-    cache(uint8_t N) : m_data(ngrams_block<count_type>::record_size(N, 1), 0) {
+    cache(uint8_t N) : m_data(ngrams_block<count_type>::record_size(N), 0) {
         init();
     }
 
@@ -182,7 +182,7 @@ struct ngrams_block {
             if (pos != size) {
                 decode_explicit();
                 // auto ptr = operator*();
-                // ptr.print(5,1);
+                // ptr.print(5);
             }
         }
 
@@ -332,7 +332,7 @@ struct ngrams_block {
         auto it = begin;
 
         size_t record_bytes =
-            tongrams::ngrams_block<count_type>::record_size(m_N, 1);
+            tongrams::ngrams_block<count_type>::record_size(m_N);
         cache prev(m_N);
         prev.init();
         prev.store(reinterpret_cast<uint8_t const*>((*it).data), record_bytes);
@@ -341,27 +341,21 @@ struct ngrams_block {
 
         ++it;
         bool ret = true;
-        // uint64_t sum = 0;
         for (size_t i = 1; it != end; ++i, ++it) {
             auto curr_ptr = *it;
-            // sum += (curr_ptr.value(m_N))->value;
-            // util::do_not_optimize_away(curr_ptr);
-            // curr_ptr.print(5,1);
             int cmp = comparator.compare(prev_ptr, curr_ptr);
-
             if (cmp == 0) {
                 std::cerr << "Error at " << i << "/" << size() << ":\n";
-                prev_ptr.print(m_N, 1);
-                curr_ptr.print(m_N, 1);
+                prev_ptr.print(m_N);
+                curr_ptr.print(m_N);
                 std::cerr << "Repeated ngrams" << std::endl;
             }
 
             if (cmp > 0) {
                 std::cerr << "Error at " << i << "/" << size() << ":\n";
-                prev_ptr.print(m_N, 1);
-                curr_ptr.print(m_N, 1);
+                prev_ptr.print(m_N);
+                curr_ptr.print(m_N);
                 std::cerr << std::endl;
-                // return false;
                 ret = false;
             }
             prev.init();
@@ -369,11 +363,10 @@ struct ngrams_block {
                        record_bytes);
             prev_ptr.data = reinterpret_cast<word_id*>(prev.begin());
         }
-        // std::cerr << sum << std::endl;
         return ret;
     }
 
-    void materialize_index(uint64_t) {}
+    void materialize_index() {}
 
     void swap(ngrams_block<Comparator>& other) {
         m_memory.swap(other.m_memory);

@@ -58,9 +58,9 @@ struct payload_container {
         return payload_container(0);
     }
 
-    static payload_container combine_values(payload_container lt,
-                                            payload_container rt) {
-        return payload_container(lt.value + rt.value);
+    static payload_container combine_values(payload_container l,
+                                            payload_container r) {
+        return payload_container(l.value + r.value);
     }
 
     static size_t size_of() {
