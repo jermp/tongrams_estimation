@@ -117,6 +117,7 @@ private:
     std::string m_cur_filename;
 };
 
+// use essentials::directory instead of this??
 struct directory {
     directory(std::string const& dir) : m_dir_path(dir.c_str()) {}
 

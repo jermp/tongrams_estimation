@@ -16,8 +16,9 @@ static const std::string default_output_filename("index");
 
 static const std::string empty("</>");
 
-static const byte_range empty_byte_range(
+static const byte_range empty_byte_range{
     reinterpret_cast<uint8_t const*>(empty.c_str()),
-    reinterpret_cast<uint8_t const*>(empty.c_str()) + empty.size());
+    reinterpret_cast<uint8_t const*>(empty.c_str()) + empty.size()};
+
 }  // namespace constants
 }  // namespace tongrams
