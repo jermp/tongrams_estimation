@@ -45,6 +45,7 @@ struct async_ngrams_file_source {
         std::remove(m_filename.c_str());
     }
 
+    // why a pointer and not a reference???
     Block* get() {
         if (empty()) util::wait(m_handle_ptr);
         assert(size());

@@ -14,7 +14,7 @@ namespace tongrams {
 */
 
 struct last {
-    typedef stream::ngrams_block_partition IN;
+    typedef stream::ngrams_block_partition input_block_type;
     typedef stream::floats_vec<> float_vector_type;
 
     last(configuration const& config, tmp::data& tmp_data,
@@ -114,7 +114,7 @@ struct last {
             m_tmp_stats.clear();
             // m_tmp_stats.print_stats();
 
-            std::vector<IN::ngrams_iterator> iterators(N, begin);
+            std::vector<input_block_type::iterator> iterators(N, begin);
 
             auto write = [&](uint8_t n) {
                 assert(n >= 2 and n <= N);

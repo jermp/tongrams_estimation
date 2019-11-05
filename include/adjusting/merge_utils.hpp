@@ -65,12 +65,12 @@ struct min_heap {
         return m_q.size();
     }
 
-    void print() const {
-        for (auto x : m_q) {
-            std::cout << x << " ";
-        }
-        std::cout << std::endl;
-    }
+    // void print() const {
+    //     for (auto x : m_q) {
+    //         std::cout << x << " ";
+    //     }
+    //     std::cout << std::endl;
+    // }
 
 private:
     std::vector<T> m_q;

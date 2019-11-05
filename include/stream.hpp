@@ -21,7 +21,6 @@ struct ngrams_block_partition : ngrams_block<count_type> {
 
     typedef count_type value;
     typedef ngram_pointer<count_type> pointer;
-    typedef ngrams_block<count_type>::iterator ngrams_iterator;
 
     void init(uint8_t ngram_order) {
         ngrams_block<count_type>::init(ngram_order);

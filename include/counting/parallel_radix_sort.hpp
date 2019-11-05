@@ -4,7 +4,7 @@
 
 namespace tongrams {
 
-template <typename Iterator>
+template <typename ForwardIterator>
 struct parallel_lsd_radix_sorter {
     parallel_lsd_radix_sorter(
         uint32_t max_digit, uint32_t num_digits,
@@ -13,7 +13,7 @@ struct parallel_lsd_radix_sorter {
         , m_num_digits(num_digits)
         , m_num_threads(num_threads) {}
 
-    void sort(Iterator begin, Iterator end) const {
+    void sort(ForwardIterator begin, ForwardIterator end) const {
         uint32_t first_column_index = m_num_digits;
         for (uint32_t column_index = first_column_index;
              column_index - first_column_index < m_num_digits; ++column_index) {
@@ -30,15 +30,13 @@ private:
     uint32_t m_num_digits;
     uint32_t m_num_threads;
 
-    void parallel_counting_sort(Iterator begin, Iterator end,
+    void parallel_counting_sort(ForwardIterator begin, ForwardIterator end,
                                 uint32_t column_index) const {
         std::vector<std::vector<uint32_t>> counts(
             m_num_threads + 1, std::vector<uint32_t>(m_max_digit, 0));
         size_t n = end - begin;
         uint64_t batch_size = n / m_num_threads;
-        if (!batch_size) {
-            throw std::runtime_error("too many threads");
-        }
+        if (!batch_size) throw std::runtime_error("too many threads");
 
         parallel_executor p(m_num_threads);
         task_region(*(p.executor), [&](task_region_handle& trh) {
@@ -46,9 +44,7 @@ private:
                 trh.run([&, i] {
                     auto b = begin + i * batch_size;
                     auto e = b + batch_size;
-                    if (i == m_num_threads - 1) {
-                        e = end;
-                    }
+                    if (i == m_num_threads - 1) e = end;
                     std::for_each(b, e, [&](auto const& x) {
                         uint32_t id = x[column_index];
                         assert(id < m_max_digit);
@@ -74,15 +70,13 @@ private:
         //     std::cerr << std::endl;
         // }
 
-        std::vector<ngram_pointer_type> tmp_index(n);
+        std::vector<typename ForwardIterator::value_type> tmp_index(n);
         task_region(*(p.executor), [&](task_region_handle& trh) {
             for (uint64_t i = 0; i < m_num_threads; ++i) {
                 trh.run([&, i] {
                     auto b = begin + i * batch_size;
                     auto e = b + batch_size;
-                    if (i == m_num_threads - 1) {
-                        e = end;
-                    }
+                    if (i == m_num_threads - 1) e = end;
                     auto& partition_counts = counts[i + 1];
                     std::for_each(b, e, [&](auto const& x) {
                         uint32_t id = x[column_index];
@@ -99,9 +93,7 @@ private:
                     auto b = tmp_index.begin() + i * batch_size;
                     auto output = begin + i * batch_size;
                     auto e = b + batch_size;
-                    if (i == m_num_threads - 1) {
-                        e = tmp_index.end();
-                    }
+                    if (i == m_num_threads - 1) e = tmp_index.end();
                     std::for_each(b, e, [&](auto const& x) {
                         *output = x;
                         ++output;
