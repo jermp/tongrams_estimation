@@ -253,6 +253,7 @@ struct ngrams_block {
 
     template <typename Comparator, typename Iterator>
     bool is_sorted(Iterator begin, Iterator end) {
+        std::cout << "checking if block is sorted...";
         uint8_t N = order();
         Comparator comparator(N);
         auto it = begin;
@@ -277,6 +278,7 @@ struct ngrams_block {
             }
             prev = curr;
         }
+        if (ret) std::cout << "OK!" << std::endl;
         return ret;
     }
 

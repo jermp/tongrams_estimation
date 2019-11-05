@@ -51,7 +51,7 @@ struct estimation {
 
         util::wait(handle);
 
-        run<last>("last");
+        // run<last>("last");
 
         // util::clean_temporaries(m_config.tmp_dirname);
     }
