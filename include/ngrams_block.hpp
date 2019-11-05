@@ -67,9 +67,7 @@ struct ngrams_block {
         void construct(ngram_pointer<Value>& ptr, Iterator begin, Iterator end,
                        Value value) {
             uint64_t n = 0;
-            for (; begin != end; ++n, ++begin) {
-                ptr.data[n] = *begin;
-            }
+            for (; begin != end; ++n, ++begin) ptr.data[n] = *begin;
             *(ptr.value(n)) = value;
         }
 
@@ -190,12 +188,10 @@ struct ngrams_block {
 
     template <typename Iterator>
     void set(uint64_t pos, Iterator begin, Iterator end, Value const& value) {
+        assert(pos < size());
         auto ptr = m_allocator.allocate(m_memory, pos);
         m_allocator.construct(ptr, begin, end, value);
-#ifdef LSD_RADIX_SORT
-        assert(pos < size());
         m_index[pos] = ptr;
-#endif
     }
 
     void print_allocator_stats() const {
@@ -206,7 +202,7 @@ struct ngrams_block {
         return m_allocator.allocated();
     }
 
-    inline uint64_t size() const {
+    inline size_t size() const {
         return m_index.size();
     }
 
@@ -228,14 +224,8 @@ struct ngrams_block {
     }
 
     inline typename Value::value_type& value(size_t i) {
-#ifdef LSD_RADIX_SORT
+        assert(i < size());
         return m_index[i].value(order())->value;
-#else
-        uint64_t offset = i * record_size();
-        assert(offset < m_memory.size());
-        word_id* data = reinterpret_cast<word_id*>(m_memory.data() + offset);
-        return reinterpret_cast<Value*>(data + order())->value;
-#endif
     }
 
     inline iterator begin() {
@@ -288,10 +278,6 @@ struct ngrams_block {
         if (ret) std::cout << "OK!" << std::endl;
         return ret;
     }
-
-    // auto& memory() {
-    //     return m_memory;
-    // }
 
     void steal(ngrams_block<Value>& other) {
         m_memory.swap(other.m_memory);

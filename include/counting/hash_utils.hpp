@@ -139,28 +139,23 @@ uint64_t hash_bytes64(byte_range const& br) {
 }
 
 static const uint64_t hash_empty = hash_bytes64(constants::empty_byte_range);
-static const iterator invalid_iterator = iterator(-1);
-static const float probing_space_multiplier = 1.5;
+static constexpr float probing_space_multiplier = 1.5;
 
 struct linear_prober {
-    linear_prober() {}
-
-    inline void init(iterator h, uint64_t universe) {
-        m_h = h % universe;
-        m_universe = universe;
-    }
+    linear_prober(iterator position, uint64_t universe)
+        : m_position(position % universe), m_universe(universe) {}
 
     inline iterator operator*() {
-        if (m_h == m_universe) m_h = 0;  // fall back
-        return m_h;
+        if (m_position == m_universe) m_position = 0;  // fall back
+        return m_position;
     }
 
     inline void operator++() {
-        ++m_h;
+        ++m_position;
     }
 
 private:
-    iterator m_h;
+    iterator m_position;
     uint64_t m_universe;
 };
 

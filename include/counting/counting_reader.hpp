@@ -17,15 +17,14 @@ struct counting_reader {
         , m_writer(thread)
         , m_next_word_id(1)  // 0 is reserved for token '</>'
         , m_CPU_time(0.0) {
-        m_num_ngrams_per_block =
-            0.9 * config.RAM / 2 /
-            (ngram::size_of(config.max_order) + count_type::size_of()
-#ifdef LSD_RADIX_SORT
-             + sizeof(word_id*)  // for ngram_pointer(s)
-#endif
-             +
-             sizeof(ngram_id) * hash_utils::probing_space_multiplier  // hashset
-            );
+        static constexpr double weight = 0.9;
+        size_t bytes_per_ngram = ngram::size_of(config.max_order) +
+                                 count_type::size_of() +  // payload
+                                 sizeof(word_id*) +       // pointer
+                                 sizeof(ngram_id);        // hashset
+        m_num_ngrams_per_block = ((weight * config.RAM) /
+                                  (2 * hash_utils::probing_space_multiplier)) /
+                                 bytes_per_ngram;
     }
 
     void init(uint8_t const* data, uint64_t partition_begin,

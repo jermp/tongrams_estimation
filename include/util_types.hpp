@@ -15,11 +15,9 @@
 
 namespace tongrams {
 
-struct equal_to {
-    bool operator()(word_id const* x, word_id const* y, size_t n) {
-        return memcmp(x, y, n) == 0;
-    }
-};
+bool equal_to(word_id const* x, word_id const* y, size_t n) {
+    return memcmp(x, y, n) == 0;
+}
 
 typedef boost::executors::basic_thread_pool executor_type;
 typedef boost::experimental::parallel::v2::task_region_handle_gen<executor_type>

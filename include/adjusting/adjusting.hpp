@@ -139,8 +139,6 @@ struct adjusting {
             limit = num_Ngrams + partition_size;
         };
 
-        equal_to equal_pred;
-
         m_writer.start();
 
         while (!m_cursors.empty()) {
@@ -155,7 +153,7 @@ struct adjusting {
                 ++num_Ngrams;
             } else {
                 auto& back = result.back();
-                bool equal = equal_pred(min.data, back.data, ngram::size_of(N));
+                bool equal = equal_to(min.data, back.data, ngram::size_of(N));
 
                 if (not equal) {
                     if (num_Ngrams >= limit and
