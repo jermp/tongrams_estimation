@@ -30,22 +30,14 @@ struct counting_reader {
     void init(uint8_t const* data, uint64_t partition_begin,
               uint64_t partition_end, bool file_begin, bool file_end) {
         auto s = clock_type::now();
-
         m_partition_end = partition_end;
         m_file_begin = file_begin;
         m_file_end = file_end;
         assert(partition_begin <= partition_end);
-
-        m_counts.init(m_max_order, m_num_ngrams_per_block,
-                      count_type(1)  // default value
-        );
-
+        m_counts.init(m_max_order, m_num_ngrams_per_block);
         m_window.init({data + partition_begin, data + m_partition_end},
                       partition_begin);
-
-        static const word_id invalid_word_id = 0;
-        m_window.fill(invalid_word_id);
-
+        m_window.fill(0);
         for (uint8_t n = 0; n < m_max_order - 1; ++n) {
             if (m_file_begin) {
                 count();
@@ -53,7 +45,6 @@ struct counting_reader {
                 advance();
             }
         }
-
         auto e = clock_type::now();
         std::chrono::duration<double> diff = e - s;
         m_CPU_time += diff.count();
@@ -87,14 +78,7 @@ struct counting_reader {
 
         while (m_writer.size() > 0)
             ;  // wait for flush
-
-        {
-            counting_step::block_type tmp;
-            tmp.init(m_max_order, m_num_ngrams_per_block, count_type(1));
-            tmp.swap(m_counts);
-            tmp.release_hash_index();
-            m_writer.push(tmp);
-        }
+        push_block();
 
         auto e = clock_type::now();
         std::chrono::duration<double> diff = e - s;
@@ -147,15 +131,13 @@ private:
 
         uint64_t hash = hash_utils::murmur_hash64(
             m_window.data(), ngram::size_of(m_max_order), 0);
-
         ngram_id at;
-        if (m_counts.find_or_insert(m_window.get(), hash, at)) {
+        bool found = m_counts.find_or_insert(m_window.get(), hash, at);
+        if (found) {
             auto ptr = m_counts[at];
-            uint64_t count = ++(ptr.value(m_max_order)->value);
-            uint64_t& max_count = m_counts.statistics().max_count;
-            if (count > max_count) {
-                max_count = count;
-            }
+            auto count = ++(ptr.value(m_max_order)->value);
+            auto& max_count = m_counts.statistics().max_count;
+            if (count > max_count) max_count = count;
         }
 
         if (m_counts.size() == m_num_ngrams_per_block) {
@@ -163,12 +145,16 @@ private:
             while (m_writer.size() > 0)
                 ;  // wait for flush
             essentials::logger("done");
-            counting_step::block_type tmp;
-            tmp.init(m_max_order, m_num_ngrams_per_block, count_type(1));
-            tmp.swap(m_counts);
-            tmp.release_hash_index();
-            m_writer.push(tmp);
+            push_block();
         }
+    }
+
+    void push_block() {
+        counting_step::block_type tmp;
+        tmp.init(m_max_order, m_num_ngrams_per_block);
+        tmp.swap(m_counts);
+        tmp.release_hash_index();
+        m_writer.push(tmp);
     }
 };
 

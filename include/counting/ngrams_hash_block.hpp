@@ -14,16 +14,17 @@ namespace tongrams {
 template <typename Value, typename Prober = hash_utils::linear_prober,
           typename EqualPred = equal_to>
 struct ngrams_hash_block {
+    static constexpr ngram_id invalid_ngram_id = ngram_id(-1);
+
     ngrams_hash_block() : m_size(0), m_num_bytes(0) {
         resize(0);
     }
 
-    void init(uint8_t ngram_order, uint64_t size, Value default_value,
+    void init(uint8_t ngram_order, uint64_t size,
               Prober const& prober = Prober(),
               EqualPred const& equal_to = EqualPred()) {
         m_prober = prober;
         m_equal_to = equal_to;
-        m_default_value = default_value;
         m_num_bytes = ngram_order * sizeof(word_id);
         m_block.init(ngram_order);
         resize(size);
@@ -31,7 +32,7 @@ struct ngrams_hash_block {
 
     void resize(uint64_t size) {
         uint64_t buckets = size * hash_utils::probing_space_multiplier;
-        m_data.resize(buckets, ngram_id(-1));
+        m_data.resize(buckets, invalid_ngram_id);
         m_block.resize_memory(size);
 
 #ifdef LSD_RADIX_SORT
@@ -46,7 +47,7 @@ struct ngrams_hash_block {
         iterator start = *m_prober;
         iterator it = start;
 
-        while (valid(m_data[it])) {
+        while (m_data[it] != invalid_ngram_id) {
             assert(it < buckets());
             if (m_equal_to(this->operator[](m_data[it]).data, &(key.data[0]),
                            m_num_bytes)) {
@@ -59,15 +60,15 @@ struct ngrams_hash_block {
                                 // thus all positions have been checked
                 std::cerr << "ERROR: all positions have been checked"
                           << std::endl;
-                at = ngram_id(-1);
+                at = invalid_ngram_id;
                 return false;
             }
         }
 
-        m_data[it] = m_size;
-        at = m_size;
-        m_block.set(m_size, key.data.begin(), key.data.end(), m_default_value);
-        ++m_size;
+        // insert
+        m_data[it] = m_size++;
+        at = m_data[it];
+        m_block.set(at, key.data.begin(), key.data.end(), Value(1));
         return false;
     }
 
@@ -124,10 +125,6 @@ struct ngrams_hash_block {
 
     double load_factor() const {
         return static_cast<double>(size()) / buckets();
-    }
-
-    inline bool valid(ngram_id id) {
-        return id != ngram_id(-1);
     }
 
     auto& block() {
@@ -203,7 +200,6 @@ private:
 
     Prober m_prober;
     EqualPred m_equal_to;
-    Value m_default_value;
 
     std::vector<ngram_id> m_data;
     ngrams_block<Value> m_block;

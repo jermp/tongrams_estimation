@@ -13,8 +13,8 @@ struct ngram_pointer {
         return data[i];
     }
 
-    inline Value* value(uint8_t ngram_order) const {
-        return reinterpret_cast<Value*>(data + ngram_order);
+    inline Value* value(uint8_t order) const {
+        return reinterpret_cast<Value*>(data + order);
     }
 
     inline bool equal_to(ngram_pointer<Value> const& other, size_t begin,
@@ -23,11 +23,11 @@ struct ngram_pointer {
                       (end - begin) * sizeof(word_id)) == 0;
     }
 
-    void print(uint8_t ngram_order) const {
-        for (uint8_t i = 0; i < ngram_order; ++i) {
+    void print(uint8_t order) const {
+        for (uint8_t i = 0; i < order; ++i) {
             std::cerr << data[i] << " ";
         }
-        value(ngram_order)->print();
+        value(order)->print();
         std::cerr << "\n";
     }
 
@@ -43,24 +43,23 @@ struct ngrams_block_statistics {
     uint64_t max_count;
 };
 
-template <typename Value, typename Memory = bytes_block,
-          typename Index = std::vector<ngram_pointer<Value>>>
+template <typename Value, typename Index = std::vector<ngram_pointer<Value>>>
 struct ngrams_block {
     typedef typename Index::iterator iterator;
 
     struct allocator {
         allocator() : m_offset(0), m_alignment(0) {}
 
-        allocator(uint8_t ngram_order) {
-            init(ngram_order);
+        allocator(uint8_t order) {
+            init(order);
         }
 
-        void init(uint8_t ngram_order) {
+        void init(uint8_t order) {
             m_offset = 0;
-            m_alignment = ngram::size_of(ngram_order);
+            m_alignment = ngram::size_of(order);
         }
 
-        void resize(Memory& memory, uint64_t num_ngrams) {
+        void resize(std::vector<uint8_t>& memory, uint64_t num_ngrams) {
             memory.resize((m_alignment + Value::size_of()) * num_ngrams);
         }
 
@@ -74,7 +73,7 @@ struct ngrams_block {
             *(ptr.value(n)) = value;
         }
 
-        auto allocate(Memory& memory) {
+        auto allocate(std::vector<uint8_t>& memory) {
             assert(m_offset < memory.size());
             ngram_pointer<Value> ptr;
             ptr.data = reinterpret_cast<word_id*>(&memory[m_offset]);
@@ -83,7 +82,7 @@ struct ngrams_block {
         }
 
         // NOTE: pos is an index, not an offset
-        auto allocate(Memory& memory, uint64_t pos) {
+        auto allocate(std::vector<uint8_t>& memory, uint64_t pos) {
             uint64_t offset = pos * (m_alignment + Value::size_of());
             assert(offset < memory.size());
             ngram_pointer<Value> ptr;
@@ -118,21 +117,19 @@ struct ngrams_block {
 
     ngrams_block() {}
 
-    ngrams_block(uint8_t ngram_order) {
-        init(ngram_order);
+    ngrams_block(uint8_t order) {
+        init(order);
     }
 
     ngrams_block(ngrams_block&& rhs) {
         *this = std::move(rhs);
     }
 
-    void init(uint8_t ngram_order) {
+    void init(uint8_t order) {
         stats = {0, 0};
         m_memory.resize(0);
-        m_allocator.init(ngram_order);
+        m_allocator.init(order);
         m_index.resize(0);
-        m_record_size =
-            ngrams_block<Value, Memory, Index>::record_size(ngram_order);
     }
 
     inline ngrams_block& operator=(ngrams_block&& rhs) {
@@ -152,13 +149,16 @@ struct ngrams_block {
     };
 
     // TODO: change name in size_of
-    static size_t record_size(uint8_t order) {
+    inline static size_t record_size(uint8_t order) {
         return ngram::size_of(order) + Value::size_of();
+    }
+
+    inline uint64_t record_size() const {
+        return record_size(order());
     }
 
     void resize_memory(uint64_t num_ngrams) {
         m_allocator.resize(m_memory, num_ngrams);
-        m_record_size = ngrams_block<Value, Memory>::record_size(order());
     }
 
     void reserve_index(uint64_t num_ngrams) {
@@ -174,23 +174,7 @@ struct ngrams_block {
     }
 
     void release() {
-        ngrams_block<Value, Memory>().swap(*this);
-    }
-
-    void materialize_index(uint64_t num_ngrams) {
-        std::cerr << "m_index size before materializing index: "
-                  << m_index.size() << std::endl;
-        m_index.clear();
-        size_t n = m_memory.size() / m_record_size;
-        std::cerr << "reserving index space for " << n << " ngrams"
-                  << std::endl;
-        m_index.reserve(n);
-        assert(m_memory.size());
-        for (uint64_t i = 0; i < num_ngrams; ++i) {
-            auto ptr = m_allocator.allocate(m_memory, i);
-            push_back(ptr);
-        }
-        assert(size() == num_ngrams);
+        ngrams_block<Value>().swap(*this);
     }
 
     void push_back(ngram_pointer<Value> const& ptr) {
@@ -240,10 +224,10 @@ struct ngrams_block {
 
     // random access with indexes
     inline auto access(size_t i) {
-        uint64_t offset = i * m_record_size;
+        uint64_t offset = i * record_size();
         assert(offset < m_memory.size());
         ngram_pointer<Value> ptr;
-        ptr.data = reinterpret_cast<word_id*>(&m_memory[offset]);
+        ptr.data = reinterpret_cast<word_id*>(m_memory.data() + offset);
         return ptr;
     }
 
@@ -261,14 +245,6 @@ struct ngrams_block {
 
     inline auto& back() {
         return m_index.back();
-    }
-
-    uint64_t record_size() const {
-        return m_record_size;
-    }
-
-    bool has_memory() const {
-        return not m_memory.empty();
     }
 
     size_t num_bytes() const {
@@ -308,15 +284,14 @@ struct ngrams_block {
         return m_memory;
     }
 
-    void steal(ngrams_block<Value, Memory, Index>& other) {
+    void steal(ngrams_block<Value, Index>& other) {
         m_memory.swap(other.m_memory);
         m_index.swap(other.m_index);
     }
 
-    void swap(ngrams_block<Value, Memory, Index>& other) {
+    void swap(ngrams_block<Value, Index>& other) {
         steal(other);
         m_allocator.swap(other.m_allocator);
-        std::swap(m_record_size, other.m_record_size);
         std::swap(stats.max_word_id, other.stats.max_word_id);
         std::swap(stats.max_count, other.stats.max_count);
     }
@@ -324,10 +299,9 @@ struct ngrams_block {
     ngrams_block_statistics stats;
 
 protected:
-    Memory m_memory;         // memory
-    allocator m_allocator;   // allocator
-    Index m_index;           // memory index
-    uint64_t m_record_size;  // ngram bytes + values bytes
+    std::vector<uint8_t> m_memory;  // memory
+    allocator m_allocator;          // allocator
+    Index m_index;                  // memory index
 };
 
 template <typename Value>
@@ -366,7 +340,7 @@ struct ngram_cache {
     }
 
 private:
-    bytes_block m_data;
+    std::vector<uint8_t> m_data;
     bool m_empty;
 };
 

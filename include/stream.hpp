@@ -61,8 +61,8 @@ struct ngrams_block_partition : ngrams_block<count_type> {
 
     void write_memory(std::ofstream& os) {
         assert(!m_memory.empty());
-        size_t offset = range.begin * m_record_size;
-        std::streamsize num_bytes = size() * m_record_size;
+        size_t offset = range.begin * record_size();
+        std::streamsize num_bytes = size() * record_size();
         os.write(reinterpret_cast<char const*>(m_memory.data() + offset),
                  num_bytes);
     }
@@ -95,20 +95,21 @@ struct ngrams_block_partition : ngrams_block<count_type> {
 };
 
 struct writer {
-    writer(uint8_t N)
-        : m_record_size(ngrams_block<count_type>::record_size(N)) {}
+    writer(uint8_t order) : m_order(order) {}
 
     template <typename Iterator>
     void write_block(std::ofstream& os, Iterator begin, Iterator end, size_t,
                      ngrams_block_statistics const&) {
+        std::streamsize record_size =
+            ngrams_block<count_type>::record_size(m_order);
         for (auto it = begin; it != end; ++it) {
             auto ptr = *it;
-            os.write(reinterpret_cast<char const*>(ptr.data), m_record_size);
+            os.write(reinterpret_cast<char const*>(ptr.data), record_size);
         }
     }
 
 private:
-    std::streamsize m_record_size;
+    uint8_t m_order;
 };
 
 template <typename T = uint16_t>
