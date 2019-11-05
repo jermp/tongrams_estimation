@@ -12,7 +12,7 @@ struct counting_writer {
     counting_writer(configuration const& config, tmp::data& tmp_data,
                     std::string const& file_extension)
         : m_tmp_data(tmp_data)
-        , m_f_gen(config.tmp_dirname, "", file_extension)
+        , m_filename_gen(config.tmp_dirname, "", file_extension)
         , m_O_time(0.0)
         , m_CPU_time(0.0)
         , m_num_flushes(0)
@@ -71,7 +71,7 @@ private:
     tmp::data& m_tmp_data;
     semi_sync_queue<counting_step::block_type> m_buffer;
     std::thread m_thread;
-    filename_generator m_f_gen;
+    filename_generator m_filename_gen;
     double m_O_time;
     double m_CPU_time;
     uint64_t m_num_flushes;
@@ -101,7 +101,7 @@ private:
         essentials::logger("sorting took " + std::to_string(elapsed.count()));
 
         start = clock_type::now();
-        std::string filename = m_f_gen();
+        std::string filename = m_filename_gen();
         std::ofstream os(filename.c_str(), std::ofstream::binary |
                                                std::ofstream::ate |
                                                std::ofstream::app);
@@ -120,7 +120,7 @@ private:
         m_buffer.pop();
         m_buffer.unlock();
         ++m_num_flushes;
-        m_f_gen.next();
+        m_filename_gen.next();
     }
 };
 

@@ -102,25 +102,6 @@ struct ngrams_hash_block {
 #endif
     }
 
-    //     void write_index(std::ofstream& os) {
-    // #ifdef LSD_RADIX_SORT
-    //         auto begin = m_block.begin();
-    //         auto end = begin + size();
-    //         for (auto it = begin; it != end; ++it) {
-    //             os.write(reinterpret_cast<char const*>(it->data),
-    //                      (std::streamsize)(m_block.record_size()));
-    //         }
-    // #else
-    //         auto begin = m_index.begin();
-    //         auto end = begin + size();
-    //         std::for_each(begin, end, [&](ngram_id const& id) {
-    //             os.write(reinterpret_cast<char
-    //             const*>(m_block.access(id).data),
-    //                      (std::streamsize)(m_block.record_size()));
-    //         });
-    // #endif
-    //     }
-
     inline auto operator[](ngram_id at) {
 #ifdef LSD_RADIX_SORT
         return m_block[at];

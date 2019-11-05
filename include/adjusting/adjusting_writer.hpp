@@ -11,8 +11,8 @@ struct adjusting_writer {
                      std::string const& file_extension)
         : m_num_flushes(0), m_time(0.0) {
         m_buffer.open();
-        filename_generator gen(config.tmp_dirname, "", file_extension);
-        std::string output_filename = gen();
+        std::string output_filename =
+            filename_generator(config.tmp_dirname, "", file_extension)();
         m_os.open(output_filename.c_str(), std::ofstream::binary |
                                                std::ofstream::ate |
                                                std::ofstream::app);

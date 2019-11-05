@@ -11,15 +11,15 @@ template <typename Writer>
 struct counting_reader {
     counting_reader(configuration const& config, tmp::data& tmp_data,
                     Writer& thread)
-        : m_config(config)
-        , m_tmp_data(tmp_data)
+        : m_tmp_data(tmp_data)
         , m_window(config.max_order)
+        , m_max_order(config.max_order)
         , m_writer(thread)
-        , m_next_word_id(1)
+        , m_next_word_id(1)  // 0 is reserved for token '</>'
         , m_CPU_time(0.0) {
         m_num_ngrams_per_block =
-            0.9 * m_config.RAM / 2 /
-            (ngram_bytes() + 8  // ngrams + count_type
+            0.9 * config.RAM / 2 /
+            (ngram::size_of(config.max_order) + count_type::size_of()
 #ifdef LSD_RADIX_SORT
              + 8  // pointers
 #endif
@@ -36,7 +36,7 @@ struct counting_reader {
         m_file_end = file_end;
         assert(partition_begin <= partition_end);
 
-        m_counts.init(m_config.max_order, m_num_ngrams_per_block,
+        m_counts.init(m_max_order, m_num_ngrams_per_block,
                       count_type(1)  // default value
         );
 
@@ -46,7 +46,7 @@ struct counting_reader {
         static const word_id invalid_word_id = 0;
         m_window.fill(invalid_word_id);
 
-        for (uint8_t n = 0; n < m_config.max_order - 1; ++n) {
+        for (uint8_t n = 0; n < m_max_order - 1; ++n) {
             if (m_file_begin) {
                 count();
             } else {
@@ -65,10 +65,6 @@ struct counting_reader {
         std::cerr << "\tI time: " << m_window.time() << " [sec]" << std::endl;
     }
 
-    size_t ngram_bytes() const {
-        return m_config.max_order * sizeof(word_id);
-    }
-
     void run() {
         auto s = clock_type::now();
 
@@ -77,14 +73,14 @@ struct counting_reader {
         }
 
         // NOTE: if we are at the end of file,
-        // add [m_config.max_order - 1] ngrams padded with empty tokens,
+        // add [m_max_order - 1] ngrams padded with empty tokens,
         // i.e., for max_order = 5 and m text words:
         // w_{m-3} w_{m-2} w_{m-1} w_m </>
         // w_{m-2} w_{m-1} w_m </> </>
         // w_{m-1} w_m </> </> </>
         // w_m </> </> </> </>
         if (m_file_end) {
-            for (uint64_t i = 0; i < m_config.max_order - 2; ++i) {
+            for (uint64_t i = 0; i < m_max_order - 2; ++i) {
                 count();
             }
         }
@@ -94,7 +90,7 @@ struct counting_reader {
 
         {
             counting_step::block_type tmp;
-            tmp.init(m_config.max_order, m_num_ngrams_per_block, count_type(1));
+            tmp.init(m_max_order, m_num_ngrams_per_block, count_type(1));
             tmp.swap(m_counts);
             tmp.release_hash_index();
             m_writer.push(tmp);
@@ -115,9 +111,9 @@ struct counting_reader {
     }
 
 private:
-    configuration const& m_config;
     tmp::data& m_tmp_data;
     sliding_window m_window;
+    uint8_t m_max_order;
     Writer& m_writer;
     word_id m_next_word_id;
     double m_CPU_time;
@@ -149,13 +145,13 @@ private:
     void count() {
         advance();
 
-        uint64_t hash =
-            hash_utils::murmur_hash64(m_window.data(), ngram_bytes(), 0);
+        uint64_t hash = hash_utils::murmur_hash64(
+            m_window.data(), ngram::size_of(m_max_order), 0);
 
         ngram_id at;
         if (m_counts.find_or_insert(m_window.get(), hash, at)) {
             auto ptr = m_counts[at];
-            uint64_t count = ++(ptr.value(m_config.max_order)->value);
+            uint64_t count = ++(ptr.value(m_max_order)->value);
             uint64_t& max_count = m_counts.statistics().max_count;
             if (count > max_count) {
                 max_count = count;
@@ -168,7 +164,7 @@ private:
                 ;  // wait for flush
             essentials::logger("done");
             counting_step::block_type tmp;
-            tmp.init(m_config.max_order, m_num_ngrams_per_block, count_type(1));
+            tmp.init(m_max_order, m_num_ngrams_per_block, count_type(1));
             tmp.swap(m_counts);
             tmp.release_hash_index();
             m_writer.push(tmp);

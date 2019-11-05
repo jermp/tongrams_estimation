@@ -27,10 +27,6 @@ struct ngram {
     void init(byte_range const& br, uint8_t n) {
         forward_byte_range_iterator it;
         it.init(br);
-        // ++it;  // advance to get first word
-        // for (uint8_t i = 0; i < n; ++i, ++it) {
-        //     data[i] = util::toul(*it);
-        // }
         for (uint8_t i = 0; i < n; ++i) {
             data[i] = util::toul(it.next());
         }
@@ -64,12 +60,6 @@ struct ngram {
         }
         std::cout << std::endl;
     }
-
-    // static ngram invalid(uint8_t n) {
-    //     std::vector<word_id> hashes(n, constants::invalid_hash);
-    //     ngram ng(hashes.begin(), n);
-    //     return ng;
-    // }
 
     static uint64_t size_of(uint8_t order) {
         return sizeof(word_id) * order;
