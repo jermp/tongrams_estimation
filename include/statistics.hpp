@@ -36,7 +36,7 @@ struct statistics {
         }
 
         template <typename Iterator>
-        void compute_smoothing_statistics(Iterator begin, size_t len) {
+        void compute_left_extensions(Iterator begin, size_t len) {
             uint8_t N = m_config.max_order;
             m_num_ngrams[N - 1] += len;
 
@@ -48,18 +48,13 @@ struct statistics {
             for (size_t i = 0; i < len; ++i, ++begin) {
                 auto ptr = *begin;
                 word_id right = ptr[N - 1];
-                // ptr.print(5,1);
 
                 for (uint8_t n = 1; n < N; ++n) {
-                    // context changes
-                    if (n != 1 and not ptr.equal_to(
-                                       prev_ptr, N - n,
-                                       N - 1))  // N - 1 is excluded from
-                                                // comparison (one-past the end)
-                    {
+                    bool context_changes =
+                        !ptr.equal_to(prev_ptr, N - n, N - 1);
+                    if (n != 1 and context_changes) {
                         m_tmp_stats.combine(n);
-                        ++m_num_ngrams[n -
-                                       2];  // set num. ngrams of previous order
+                        ++m_num_ngrams[n - 2];  // previous order
                     }
 
                     word_id left = ptr[N - n - 1];
@@ -68,19 +63,14 @@ struct statistics {
                     }
                 }
 
-                if (not ptr.equal_to(prev_ptr, 0, N - 1)) {
-                    ++m_num_ngrams[3];
-                }
+                if (!ptr.equal_to(prev_ptr, 0, N - 1)) ++m_num_ngrams[3];
 
-                // N-gram case (special): they do not have modified counts,
+                // N-gram case: they do not have modified counts,
                 // rather their counts are equal to the occurrence in corpus
                 uint64_t count = *(ptr.value(N));
-                assert(count);
+                assert(count > 0);
                 m_total_num_words += count;
-                if (count <= 4) {
-                    ++m_tmp_stats.t[N - 1][count - 1];
-                }
-
+                if (count <= 4) ++m_tmp_stats.t[N - 1][count - 1];
                 prev_ptr = ptr;
             }
 
@@ -94,7 +84,6 @@ struct statistics {
                 m_tmp_stats.combine(n);
                 m_tmp_stats.release(n);
             }
-
             for (uint8_t n = 2; n <= m_config.max_order; ++n) {
                 for (uint64_t k = 1; k <= 4; ++k) {
                     m_t[n - 1][k - 1] = m_tmp_stats.t[n - 1][k - 1];
@@ -105,7 +94,6 @@ struct statistics {
         void build(statistics& stats) {
             uint8_t N = m_config.max_order;
             stats.num_ngrams(1) = m_vocab_size;
-            // std::cerr << "vocabulary size: " << m_vocab_size << std::endl;
             for (uint8_t n = 2; n <= N; ++n) {
                 stats.num_ngrams(n) = m_num_ngrams[n - 1];
             }
@@ -122,12 +110,8 @@ struct statistics {
             // NOTE: smoothing statistics for unigrams must be computed globally
             for (auto k : m_tmp_stats.occs[0]) {
                 assert(k);
-                if (k <= 4) {
-                    ++m_t[0][k - 1];
-                }
+                if (k <= 4) ++m_t[0][k - 1];
             }
-
-            // m_tmp_stats.print_stats();
 
             for (uint8_t n = 2; n <= N; ++n) {
                 auto& positions = m_tmp_data.probs_offsets[n - 1];
@@ -186,11 +170,9 @@ struct statistics {
                            // vocabulary_size
 
         float& D(uint8_t n, uint64_t k) {
-            assert(k);
+            assert(k > 0);
             assert(n >= 1 and n <= m_config.max_order);
-            if (k >= 3) {
-                return m_D[n - 1].back();
-            }
+            if (k >= 3) return m_D[n - 1].back();
             return m_D[n - 1][k - 1];
         }
 
@@ -201,36 +183,29 @@ struct statistics {
         }
 
         float compute_discount(uint8_t n, uint64_t k) {
-            assert(k and k <= 4);
+            assert(k > 0 and k <= 4);
             assert(n >= 1 and n <= m_config.max_order);
-
             if (k <= 3) {
                 float d = (t(n, 1) + 2 * t(n, 2)) * t(n, k);
-                if (d == 0.0) {
-                    throw std::runtime_error("bad discount");
-                }
+                if (d == 0.0) throw std::runtime_error("bad discount");
                 return static_cast<float>(k) -
                        static_cast<float>((k + 1) * t(n, 1) * t(n, k + 1)) / d;
             }
-
             return compute_discount(n, 3);
         }
 
         void complain(uint8_t n, uint64_t k) {
+            auto check = [&](uint8_t n, uint64_t k) {
+                if (!t(n, k)) std::cerr << k << "\n";
+            };
             std::cerr << "Error: could not calculate Kneser-Ney discounts for "
-                      << int(n) << "-grams with adjusted count " << k
-                      << " because it was not observed any " << int(n)
+                      << int(n) << "-grams with adjusted count " << k << "\n"
+                      << "because it was not observed any " << int(n)
                       << "-grams with adjusted count:\n";
             check(n, 1);
             check(n, 2);
             check(n, 3);
             std::cerr << "Is this small or artificial data?" << std::endl;
-        }
-
-        void check(uint8_t n, uint64_t k) {
-            if (!t(n, k)) {
-                std::cerr << k << "\n";
-            }
         }
     };
 
@@ -242,12 +217,9 @@ struct statistics {
         , m_unk_prob(0.0) {}
 
     inline float D(uint8_t n, uint64_t k) const {
-        assert(k);
+        assert(k > 0);
         assert(n >= 1 and n <= order());
-
-        if (k >= 3) {
-            return m_D[n - 1].back();
-        }
+        if (k >= 3) return m_D[n - 1].back();
         return m_D[n - 1][k - 1];
     }
 

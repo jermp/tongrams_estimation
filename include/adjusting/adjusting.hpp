@@ -122,13 +122,13 @@ struct adjusting {
                   << std::endl;
         std::cerr << "limit = " << limit << " ngrams" << std::endl;
 
-        auto compute_smoothing_statistics = [&]() {
+        auto compute_left_extensions = [&]() {
             result.range.end = index.size();
             assert(result.template is_sorted<context_order_comparator_type>(
                 result.begin(), result.end()));
             auto start = clock_type::now();
-            m_stats_builder.compute_smoothing_statistics(result.begin(),
-                                                         result.size());
+            m_stats_builder.compute_left_extensions(result.begin(),
+                                                    result.size());
             auto end = clock_type::now();
             std::chrono::duration<double> elapsed = end - start;
             m_total_smooth_time += elapsed.count();
@@ -170,7 +170,7 @@ struct adjusting {
                     }
 
                     if (index.size() == num_ngrams_per_block) {
-                        compute_smoothing_statistics();
+                        compute_left_extensions();
                         auto start = clock_type::now();
                         while (m_writer.size() > 0)
                             ;  // wait for flush
@@ -222,8 +222,7 @@ struct adjusting {
                   << std::endl;
 
         save_offsets();
-
-        compute_smoothing_statistics();
+        compute_left_extensions();
         m_stats_builder.finalize();
 
         auto end = clock_type::now();

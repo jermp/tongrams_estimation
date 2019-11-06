@@ -72,9 +72,8 @@ auto async_call(Funct& f, Args&&... args) {
 }
 
 void wait(std::unique_ptr<std::thread>& handle_ptr) {
-    if (handle_ptr and handle_ptr->joinable()) {
-        handle_ptr->join();
-    }
+    if (handle_ptr and handle_ptr->joinable()) handle_ptr->join();
 }
+
 }  // namespace util
 }  // namespace tongrams
