@@ -7,7 +7,7 @@
 namespace tongrams {
 namespace counting_step {
 
-typedef ngrams_hash_block<count_type> block_type;
+typedef ngrams_hash_block<> block_type;
 
 }  // namespace counting_step
 }  // namespace tongrams

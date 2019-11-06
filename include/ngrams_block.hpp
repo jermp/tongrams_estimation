@@ -7,17 +7,16 @@
 
 namespace tongrams {
 
-template <typename Value>
 struct ngram_pointer {
     inline word_id operator[](size_t i) const {
         return data[i];
     }
 
-    inline Value* value(uint8_t order) const {
-        return reinterpret_cast<Value*>(data + order);
+    inline count_type* value(uint8_t order) const {
+        return reinterpret_cast<count_type*>(data + order);
     }
 
-    inline bool equal_to(ngram_pointer<Value> const& other, size_t begin,
+    inline bool equal_to(ngram_pointer const& other, size_t begin,
                          size_t end) const {
         return memcmp(other.data + begin, this->data + begin,
                       (end - begin) * sizeof(word_id)) == 0;
@@ -27,14 +26,13 @@ struct ngram_pointer {
         for (uint8_t i = 0; i < order; ++i) {
             std::cerr << data[i] << " ";
         }
-        value(order)->print();
-        std::cerr << "\n";
+        std::cerr << "[" << value(order) << "]\n";
     }
 
     word_id* data;
 };
 
-typedef ngram_pointer<count_type> ngram_pointer_type;
+typedef ngram_pointer ngram_pointer_type;
 typedef context_order_comparator<ngram_pointer_type>
     context_order_comparator_type;
 
@@ -43,9 +41,8 @@ struct ngrams_block_statistics {
     uint64_t max_count;
 };
 
-template <typename Value>
 struct ngrams_block {
-    typedef typename std::vector<ngram_pointer<Value>>::iterator iterator;
+    typedef typename std::vector<ngram_pointer>::iterator iterator;
 
     struct allocator {
         allocator() : m_offset(0), m_alignment(0) {}
@@ -60,30 +57,30 @@ struct ngrams_block {
         }
 
         void resize(std::vector<uint8_t>& memory, uint64_t num_ngrams) {
-            memory.resize((m_alignment + Value::size_of()) * num_ngrams);
+            memory.resize((m_alignment + sizeof(count_type)) * num_ngrams);
         }
 
         template <typename Iterator>
-        void construct(ngram_pointer<Value>& ptr, Iterator begin, Iterator end,
-                       Value value) {
+        void construct(ngram_pointer& ptr, Iterator begin, Iterator end,
+                       count_type count) {
             uint64_t n = 0;
             for (; begin != end; ++n, ++begin) ptr.data[n] = *begin;
-            *(ptr.value(n)) = value;
+            *(ptr.value(n)) = count;
         }
 
         auto allocate(std::vector<uint8_t>& memory) {
             assert(m_offset < memory.size());
-            ngram_pointer<Value> ptr;
+            ngram_pointer ptr;
             ptr.data = reinterpret_cast<word_id*>(&memory[m_offset]);
-            m_offset += m_alignment + Value::size_of();
+            m_offset += m_alignment + sizeof(count_type);
             return ptr;
         }
 
         // NOTE: pos is an index, not an offset
         auto allocate(std::vector<uint8_t>& memory, uint64_t pos) {
-            uint64_t offset = pos * (m_alignment + Value::size_of());
+            uint64_t offset = pos * (m_alignment + sizeof(count_type));
             assert(offset < memory.size());
-            ngram_pointer<Value> ptr;
+            ngram_pointer ptr;
             ptr.data = reinterpret_cast<word_id*>(&memory[offset]);
             return ptr;
         }
@@ -131,9 +128,7 @@ struct ngrams_block {
     }
 
     inline ngrams_block& operator=(ngrams_block&& rhs) {
-        if (this != &rhs) {
-            swap(rhs);
-        }
+        if (this != &rhs) swap(rhs);
         return *this;
     };
 
@@ -148,7 +143,7 @@ struct ngrams_block {
 
     // TODO: change name in size_of
     inline static size_t record_size(uint8_t order) {
-        return ngram::size_of(order) + Value::size_of();
+        return ngram::size_of(order) + sizeof(count_type);
     }
 
     inline uint64_t record_size() const {
@@ -172,25 +167,25 @@ struct ngrams_block {
     }
 
     void release() {
-        ngrams_block<Value>().swap(*this);
+        ngrams_block().swap(*this);
     }
 
-    void push_back(ngram_pointer<Value> const& ptr) {
+    void push_back(ngram_pointer const& ptr) {
         m_index.push_back(ptr);
     }
 
     template <typename Iterator>
-    void push_back(Iterator begin, Iterator end, Value value) {
+    void push_back(Iterator begin, Iterator end, count_type count) {
         auto ptr = m_allocator.allocate(m_memory);
-        m_allocator.construct(ptr, begin, end, value);
+        m_allocator.construct(ptr, begin, end, count);
         push_back(ptr);
     }
 
     template <typename Iterator>
-    void set(uint64_t pos, Iterator begin, Iterator end, Value value) {
+    void set(uint64_t pos, Iterator begin, Iterator end, count_type count) {
         assert(pos < size());
         auto ptr = m_allocator.allocate(m_memory, pos);
-        m_allocator.construct(ptr, begin, end, value);
+        m_allocator.construct(ptr, begin, end, count);
         m_index[pos] = ptr;
     }
 
@@ -210,22 +205,22 @@ struct ngrams_block {
         return m_allocator.order();
     }
 
-    inline ngram_pointer<Value> operator[](size_t i) {
+    inline ngram_pointer operator[](size_t i) {
         assert(i < size());
         return m_index[i];
     }
 
-    inline ngram_pointer<Value> access(size_t i) {
+    inline ngram_pointer access(size_t i) {
         uint64_t offset = i * record_size();
         assert(offset < m_memory.size());
-        ngram_pointer<Value> ptr;
+        ngram_pointer ptr;
         ptr.data = reinterpret_cast<word_id*>(m_memory.data() + offset);
         return ptr;
     }
 
-    inline typename Value::value_type& value(size_t i) {
+    inline count_type& value(size_t i) {
         assert(i < size());
-        return m_index[i].value(order())->value;
+        return *(m_index[i].value(order()));
     }
 
     inline iterator begin() {
@@ -279,12 +274,12 @@ struct ngrams_block {
         return ret;
     }
 
-    void steal(ngrams_block<Value>& other) {
+    void steal(ngrams_block& other) {
         m_memory.swap(other.m_memory);
         m_index.swap(other.m_index);
     }
 
-    void swap(ngrams_block<Value>& other) {
+    void swap(ngrams_block& other) {
         steal(other);
         m_allocator.swap(other.m_allocator);
         std::swap(stats.max_word_id, other.stats.max_word_id);
@@ -296,21 +291,20 @@ struct ngrams_block {
 protected:
     std::vector<uint8_t> m_memory;
     allocator m_allocator;
-    std::vector<ngram_pointer<Value>> m_index;
+    std::vector<ngram_pointer> m_index;
 };
 
-template <typename Value>
 struct ngram_cache {
     ngram_cache() : m_empty(true) {}
 
-    typedef ngram_pointer<Value> pointer;
+    typedef ngram_pointer pointer;
 
     ngram_cache(uint8_t order) {
         init(order);
     }
 
     void init(uint8_t order) {
-        m_data.resize(ngrams_block<Value>::record_size(order));
+        m_data.resize(ngrams_block::record_size(order));
         m_empty = true;
     }
 
@@ -329,7 +323,7 @@ struct ngram_cache {
         return m_empty;
     }
 
-    void swap(ngram_cache<Value>& other) {
+    void swap(ngram_cache& other) {
         m_data.swap(other.m_data);
         std::swap(m_empty, other.m_empty);
     }

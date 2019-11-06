@@ -47,35 +47,7 @@ struct adaptor {
     }
 };
 
-// todo: remove this class, useless: payload is always a counter
-template <typename UintType>
-struct payload_container {
-    typedef UintType value_type;
-
-    payload_container() {}
-    payload_container(UintType x) : value(x) {}
-
-    static payload_container invalid() {
-        return payload_container(0);
-    }
-
-    static payload_container combine_values(payload_container l,
-                                            payload_container r) {
-        return payload_container(l.value + r.value);
-    }
-
-    static size_t size_of() {
-        return sizeof(value);
-    }
-
-    void print() const {
-        std::cerr << "[" << value << "]";
-    }
-
-    UintType value;
-};
-
-typedef payload_container<uint64_t> count_type;
+typedef uint64_t count_type;
 
 struct filename_generator {
     filename_generator(std::string const& dir_name, std::string const& prefix,

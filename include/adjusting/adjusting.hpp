@@ -66,8 +66,7 @@ struct adjusting {
         size_t num_files_to_merge = filenames.size();
         std::cerr << "merging " << num_files_to_merge << " files" << std::endl;
 
-        uint64_t record_size =
-            ngrams_block<count_type>::record_size(m_config.max_order);
+        uint64_t record_size = ngrams_block::record_size(m_config.max_order);
         uint64_t min_load_size = m_config.RAM / (2 * num_files_to_merge + 1) /
                                  record_size * record_size;
         uint64_t default_load_size =
@@ -192,10 +191,7 @@ struct adjusting {
                     ++num_Ngrams;
 
                 } else {
-                    // combine the two values, by updating the one in result
-                    auto combined_value = count_type::combine_values(
-                        *(back.value(N)), *(min.value(N)));
-                    *(back.value(N)) = combined_value;
+                    *(back.value(N)) += *(min.value(N));
                 }
             }
 

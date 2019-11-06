@@ -11,7 +11,7 @@
 
 namespace tongrams {
 
-template <typename Value, typename Prober = hash_utils::linear_prober>
+template <typename Prober = hash_utils::linear_prober>
 struct ngrams_hash_block {
     static constexpr ngram_id invalid_ngram_id = ngram_id(-1);
 
@@ -58,7 +58,7 @@ struct ngrams_hash_block {
         // insert
         m_data[it] = m_size++;
         at = m_data[it];
-        m_block.set(at, key.data.begin(), key.data.end(), Value(1));
+        m_block.set(at, key.data.begin(), key.data.end(), 1);
         return false;
     }
 
@@ -74,8 +74,8 @@ struct ngrams_hash_block {
         uint32_t num_digits = m_block.order();
         // std::cerr << "max_digit = " << max_digit
         //           << "; num_digits = " << num_digits << std::endl;
-        parallel_lsd_radix_sorter<typename ngrams_block<Value>::iterator>
-            sorter(max_digit, num_digits);
+        parallel_lsd_radix_sorter<typename ngrams_block::iterator> sorter(
+            max_digit, num_digits);
         sorter.sort(begin, end);
 #else
 
@@ -90,7 +90,7 @@ struct ngrams_hash_block {
         assert(m_block.template is_sorted<Comparator>(begin, end));
     }
 
-    inline typename Value::value_type& operator[](ngram_id at) {
+    inline count_type& operator[](ngram_id at) {
         assert(at < size());
         return m_block.value(at);
     }
@@ -120,7 +120,7 @@ struct ngrams_hash_block {
     }
 
     struct enumerator {
-        enumerator(ngrams_block<Value>& block, size_t pos = 0)
+        enumerator(ngrams_block& block, size_t pos = 0)
             : m_pos(pos), m_block(block) {}
 
         bool operator==(enumerator const& rhs) {
@@ -141,10 +141,10 @@ struct ngrams_hash_block {
 
     private:
         size_t m_pos;
-        ngrams_block<Value>& m_block;
+        ngrams_block& m_block;
     };
 
-    void swap(ngrams_hash_block<Value, Prober>& other) {
+    void swap(ngrams_hash_block<Prober>& other) {
         std::swap(m_size, other.m_size);
         std::swap(m_num_bytes, other.m_num_bytes);
         m_data.swap(other.m_data);
@@ -167,7 +167,7 @@ private:
     uint64_t m_size;
     size_t m_num_bytes;
     std::vector<ngram_id> m_data;
-    ngrams_block<Value> m_block;
+    ngrams_block m_block;
 };
 
 }  // namespace tongrams

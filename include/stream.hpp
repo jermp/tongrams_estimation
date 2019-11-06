@@ -14,16 +14,16 @@ static const int invalid_id = -1;
 }
 
 // NOTE: this class is useless, we can do everything with ngrams_block
-struct ngrams_block_partition : ngrams_block<count_type> {
+struct ngrams_block_partition : ngrams_block {
     ngrams_block_partition(uint8_t ngram_order) {
         init(ngram_order);
     }
 
     typedef count_type value;
-    typedef ngram_pointer<count_type> pointer;
+    typedef ngram_pointer pointer;
 
     void init(uint8_t ngram_order) {
-        ngrams_block<count_type>::init(ngram_order);
+        ngrams_block::init(ngram_order);
         range = {0, 0};
         prd = false;
     }
@@ -37,8 +37,7 @@ struct ngrams_block_partition : ngrams_block<count_type> {
         return *this;
     };
 
-    ngrams_block_partition(ngrams_block_partition const&)
-        : ngrams_block<count_type>() {
+    ngrams_block_partition(ngrams_block_partition const&) : ngrams_block() {
         assert(false);
     }
 
@@ -53,7 +52,7 @@ struct ngrams_block_partition : ngrams_block<count_type> {
     }
 
     void swap(ngrams_block_partition& other) {
-        ngrams_block<count_type>::swap(other);
+        ngrams_block::swap(other);
         std::swap(range, other.range);
         std::swap(prd, other.prd);
     }
@@ -99,8 +98,7 @@ struct writer {
     template <typename Iterator>
     void write_block(std::ofstream& os, Iterator begin, Iterator end, size_t,
                      ngrams_block_statistics const&) {
-        std::streamsize record_size =
-            ngrams_block<count_type>::record_size(m_order);
+        std::streamsize record_size = ngrams_block::record_size(m_order);
         for (auto it = begin; it != end; ++it) {
             auto ptr = *it;
             os.write(reinterpret_cast<char const*>(ptr.data), record_size);

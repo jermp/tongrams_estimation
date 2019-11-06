@@ -19,9 +19,9 @@ struct counting_reader {
         , m_CPU_time(0.0) {
         static constexpr double weight = 0.9;
         size_t bytes_per_ngram = ngram::size_of(config.max_order) +
-                                 count_type::size_of() +  // payload
-                                 sizeof(word_id*) +       // pointer
-                                 sizeof(ngram_id);        // hashset
+                                 sizeof(count_type) +  // payload
+                                 sizeof(word_id*) +    // pointer
+                                 sizeof(ngram_id);     // hashset
         m_num_ngrams_per_block = ((weight * config.RAM) /
                                   (2 * hash_utils::probing_space_multiplier)) /
                                  bytes_per_ngram;

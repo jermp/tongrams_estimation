@@ -44,7 +44,7 @@ struct writer {
             for (int i = 0; i < N; ++i) {
                 m_buffer.append_bits(ptr[i], w);
             }
-            m_buffer.append_bits((ptr.value(N))->value, v);
+            m_buffer.append_bits(*(ptr.value(N)), v);
         };
 
         size_t ngrams_in_block = 1;  // since first is written explicitly
@@ -95,7 +95,7 @@ struct writer {
                         m_buffer.append_bits(ptr[i], w);
                         if (i == m_comparator.end()) break;
                     }
-                    m_buffer.append_bits((ptr.value(N))->value, v);
+                    m_buffer.append_bits(*(ptr.value(N)), v);
                 }
             }
 
@@ -117,7 +117,7 @@ private:
 struct cache {
     cache() : pos(nullptr), m_begin(nullptr), m_data(0, 0) {}
 
-    cache(uint8_t N) : m_data(ngrams_block<count_type>::record_size(N), 0) {
+    cache(uint8_t N) : m_data(ngrams_block::record_size(N), 0) {
         init();
     }
 
@@ -331,8 +331,7 @@ struct ngrams_block {
         C comparator(m_N);
         auto it = begin;
 
-        size_t record_bytes =
-            tongrams::ngrams_block<count_type>::record_size(m_N);
+        size_t record_bytes = tongrams::ngrams_block::record_size(m_N);
         cache prev(m_N);
         prev.init();
         prev.store(reinterpret_cast<uint8_t const*>((*it).data), record_bytes);

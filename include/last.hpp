@@ -24,7 +24,7 @@ struct last {
         , m_tmp_data(tmp_data)
         , m_stats(stats)
         , m_tmp_stats(tmp_stats)
-        , m_record_size(ngrams_block<count_type>::record_size(config.max_order))
+        , m_record_size(ngrams_block::record_size(config.max_order))
         , m_pointers(config.max_order - 1, 0)
         , m_probs(config.max_order, float_vector_type(0))
         , m_index_builder(config.max_order, config, stats)
@@ -228,7 +228,7 @@ struct last {
                     backoff /= N_gram_denominator;
 
                     std::for_each(it - l, it, [&](auto const& ptr) {
-                        uint64_t count = (ptr.value(N))->value;
+                        uint64_t count = *(ptr.value(N));
                         assert(count);
                         float prob =
                             (static_cast<float>(count) - m_stats.D(N, count)) /
@@ -250,7 +250,7 @@ struct last {
                     });
 
                     if (it != end) {
-                        N_gram_denominator = (it->value(N))->value;
+                        N_gram_denominator = *(it->value(N));
                     }
                 }
 
@@ -294,7 +294,7 @@ struct last {
                                 word_id right = ptr[N - 1];
 
                                 if (n == N) {
-                                    uint64_t count = (ptr.value(N))->value;
+                                    uint64_t count = *(ptr.value(N));
                                     N_gram_denominator += count;
                                     if (count < 5) {
                                         ++m_tmp_stats.r[N - 1][count - 1];

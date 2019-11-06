@@ -73,8 +73,8 @@ struct statistics {
                 }
 
                 // N-gram case (special): they do not have modified counts,
-                // rather their counts are equal to the occurrence in text
-                uint64_t count = (ptr.value(N))->value;
+                // rather their counts are equal to the occurrence in corpus
+                uint64_t count = *(ptr.value(N));
                 assert(count);
                 m_total_num_words += count;
                 if (count <= 4) {
@@ -176,7 +176,7 @@ struct statistics {
         configuration const& m_config;
         tmp::statistics& m_tmp_stats;
         tmp::data& m_tmp_data;
-        ngram_cache<count_type> m_ngram_cache;
+        ngram_cache m_ngram_cache;
         std::vector<counts> m_t;
         std::vector<floats> m_D;
         counts m_num_ngrams;
