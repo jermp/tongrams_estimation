@@ -47,6 +47,7 @@ struct adaptor {
     }
 };
 
+// todo: remove this class, useless: payload is always a counter
 template <typename UintType>
 struct payload_container {
     typedef UintType value_type;

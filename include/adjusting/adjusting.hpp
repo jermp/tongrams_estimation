@@ -88,14 +88,19 @@ struct adjusting {
             gen.fetch_next_block(load_size);
         }
 
-        assert(m_cursors.empty());
-        for (uint64_t k = 0; k != m_stream_generators.size(); ++k) {
-            auto& sg = m_stream_generators[k];
-            auto* ptr = sg.get();
+        auto get_block = [](StreamGenerator& gen) {
+            auto* ptr = gen.get_block();
             assert(ptr);
             ptr->materialize_index();
             assert(ptr->template is_sorted<context_order_comparator_type>(
                 ptr->begin(), ptr->end()));
+            return ptr;
+        };
+
+        assert(m_cursors.empty());
+        for (uint64_t k = 0; k != m_stream_generators.size(); ++k) {
+            auto& gen = m_stream_generators[k];
+            auto* ptr = get_block(gen);
             cursor<typename input_block_type::iterator> c(ptr->begin(),
                                                           ptr->end(), k);
             m_cursors.push(c);
@@ -120,6 +125,8 @@ struct adjusting {
 
         auto compute_smoothing_statistics = [&]() {
             result.range.end = index.size();
+            assert(result.template is_sorted<context_order_comparator_type>(
+                result.begin(), result.end()));
             auto start = clock_type::now();
             m_stats_builder.compute_smoothing_statistics(result.begin(),
                                                          result.size());
@@ -165,9 +172,6 @@ struct adjusting {
 
                     if (index.size() == num_ngrams_per_block) {
                         compute_smoothing_statistics();
-                        assert(result.template is_sorted<
-                               context_order_comparator_type>(result.begin(),
-                                                              result.end()));
                         auto start = clock_type::now();
                         while (m_writer.size() > 0)
                             ;  // wait for flush
@@ -177,7 +181,6 @@ struct adjusting {
 
                         m_writer.push(result);
 
-                        // re-init result block
                         result.init(N);
                         result.resize_memory(num_ngrams_per_block);
                         result.reserve_index(num_ngrams_per_block);
@@ -200,23 +203,14 @@ struct adjusting {
 
             if (top.range.begin == top.range.end) {
                 auto& gen = m_stream_generators[top.index];
-                auto* ptr = gen.get();
-                assert(ptr);
-                gen.processed(ptr);
-                gen.release_processed_blocks();
-
-                if (gen.empty() and gen.eos()) {
+                gen.release_block();
+                if (gen.eos()) {
+                    assert(gen.empty());
                     gen.close_and_remove();
                     m_cursors.pop();
                 } else {
                     gen.fetch_next_block(load_size);
-                    auto* ptr = gen.get();
-                    assert(ptr);
-                    ptr->materialize_index();
-                    assert(
-                        ptr->template is_sorted<context_order_comparator_type>(
-                            ptr->begin(), ptr->end()));
-                    // update top
+                    auto* ptr = get_block(gen);
                     top.range.begin = ptr->begin();
                     top.range.end = ptr->end();
                 }

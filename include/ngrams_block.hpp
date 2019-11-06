@@ -187,7 +187,7 @@ struct ngrams_block {
     }
 
     template <typename Iterator>
-    void set(uint64_t pos, Iterator begin, Iterator end, Value const& value) {
+    void set(uint64_t pos, Iterator begin, Iterator end, Value value) {
         assert(pos < size());
         auto ptr = m_allocator.allocate(m_memory, pos);
         m_allocator.construct(ptr, begin, end, value);

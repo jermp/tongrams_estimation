@@ -35,9 +35,7 @@ struct async_ngrams_file_source {
 
     void close() {
         util::wait(m_handle_ptr);
-        if (m_is.is_open()) {
-            m_is.close();
-        }
+        if (m_is.is_open()) m_is.close();
     }
 
     void close_and_remove() {
@@ -63,6 +61,7 @@ struct async_ngrams_file_source {
         return ptr;
     }
 
+    // unsused by counting and adjusting
     void release_processed_blocks() {
         while (not m_buffer.empty() and m_buffer.front().prd) {
             m_buffer.front().release();
@@ -71,17 +70,30 @@ struct async_ngrams_file_source {
         m_buffer_size = m_buffer.size();
     }
 
+    // unsused by counting and adjusting
     void processed(Block* ptr) {
         ptr->prd = true;
         --m_buffer_size;
     }
 
     size_t size() const {
-        return m_buffer_size;
+        return m_buffer_size;  // then just use m_buffer.size()
     }
 
     bool empty() const {
         return size() == 0;
+    }
+
+    Block* get_block() {
+        if (empty()) util::wait(m_handle_ptr);
+        assert(size());
+        return &m_buffer.front();
+    }
+
+    void release_block() {
+        m_buffer.front().release();
+        m_buffer.pop_front();
+        --m_buffer_size;  // then just use m_buffer.size()
     }
 
 protected:
@@ -137,9 +149,9 @@ private:
         block.range.begin = 0;
         if (m_read_bytes + bytes > m_file_size) {
             bytes = m_file_size - m_read_bytes;
+            m_eos = true;
         }
         m_read_bytes += bytes;
-        if (m_read_bytes == m_file_size) m_eos = true;
         assert(bytes % block.record_size() == 0);
         block.range.end = bytes / block.record_size();
         char* begin = block.initialize_memory(bytes);
@@ -200,26 +212,19 @@ private:
 
     std::function<void(void)> fetch = [&]() {
         if (eos()) return;
-
         auto s = clock_type::now();
-
         size_t size = 0;
         essentials::load_pod(m_is, size);
         m_read_bytes += sizeof(size);
-        // std::cerr << "read m_size = " << size << std::endl;
         assert(size > 0);
-
         block_type block(m_N, size, m_w, m_v);
         size_t bytes = fc::BLOCK_BYTES;
         if (m_read_bytes + bytes > m_file_size) {
             bytes = m_file_size - m_read_bytes;
+            m_eos = true;
         }
-
         m_read_bytes += bytes;
-        if (m_read_bytes == m_file_size) m_eos = true;
-
         block.read(m_is, bytes);
-
         m_buffer.push_back(std::move(block));
         ++m_buffer_size;
         auto e = clock_type::now();
