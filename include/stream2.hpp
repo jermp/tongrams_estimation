@@ -12,11 +12,10 @@ typedef fc::ngrams_block<context_order_comparator_type> compressed_block_type;
 
 template <typename Block>
 struct async_ngrams_file_source {
-    async_ngrams_file_source()
-        : m_file_size(0), m_buffer_size(0), m_handle_ptr(nullptr) {}
+    async_ngrams_file_source() : m_file_size(0), m_handle_ptr(nullptr) {}
 
     async_ngrams_file_source(std::string const& filename)
-        : m_file_size(0), m_buffer_size(0), m_handle_ptr(nullptr) {
+        : m_file_size(0), m_handle_ptr(nullptr) {
         open(filename);
     }
 
@@ -43,45 +42,12 @@ struct async_ngrams_file_source {
         std::remove(m_filename.c_str());
     }
 
-    // why a pointer and not a reference???
-    Block* get() {
-        if (empty()) util::wait(m_handle_ptr);
-        assert(size());
-        Block* ptr = nullptr;
-        size_t processed_blocks = 0;
-        for (auto& x : m_buffer) {
-            if (not x.prd) {
-                if (!ptr) ptr = &x;
-            } else {
-                ++processed_blocks;
-            }
-        }
-        assert(m_buffer.size() >= processed_blocks);
-        m_buffer_size = m_buffer.size() - processed_blocks;
-        return ptr;
-    }
-
-    // unsused by counting and adjusting
-    void release_processed_blocks() {
-        while (not m_buffer.empty() and m_buffer.front().prd) {
-            m_buffer.front().release();
-            m_buffer.pop_front();
-        }
-        m_buffer_size = m_buffer.size();
-    }
-
-    // unsused by counting and adjusting
-    void processed(Block* ptr) {
-        ptr->prd = true;
-        --m_buffer_size;
-    }
-
     size_t size() const {
-        return m_buffer_size;  // then just use m_buffer.size()
+        return m_buffer.size();
     }
 
     bool empty() const {
-        return size() == 0;
+        return m_buffer.empty();
     }
 
     Block* get_block() {
@@ -93,14 +59,12 @@ struct async_ngrams_file_source {
     void release_block() {
         m_buffer.front().release();
         m_buffer.pop_front();
-        --m_buffer_size;  // then just use m_buffer.size()
     }
 
 protected:
     std::string m_filename;
     std::ifstream m_is;
     size_t m_file_size;
-    size_t m_buffer_size;
     std::deque<Block> m_buffer;
     std::unique_ptr<std::thread> m_handle_ptr;
 };
@@ -157,7 +121,6 @@ private:
         char* begin = block.initialize_memory(bytes);
         block.read_bytes(m_is, begin, bytes);
         m_buffer.push_back(std::move(block));
-        ++m_buffer_size;
         auto e = clock_type::now();
         std::chrono::duration<double> elapsed = e - s;
         m_I_time += elapsed.count();
@@ -226,7 +189,6 @@ private:
         m_read_bytes += bytes;
         block.read(m_is, bytes);
         m_buffer.push_back(std::move(block));
-        ++m_buffer_size;
         auto e = clock_type::now();
         std::chrono::duration<double> elapsed = e - s;
         m_I_time += elapsed.count();

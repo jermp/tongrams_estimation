@@ -9,10 +9,6 @@
 
 namespace tongrams {
 
-/*
-    single-threaded version
-*/
-
 struct last {
     typedef stream::ngrams_block_partition input_block_type;
     typedef stream::floats_vec<> float_vector_type;
@@ -83,7 +79,7 @@ struct last {
         auto start = clock_type::now();
 
         for (; m_current_block_id < m_num_blocks;) {
-            auto* block = m_stream_generator.get();
+            auto* block = m_stream_generator.get_block();
             async_fetch_next_block();
 
             uint8_t N = block->order();
@@ -163,13 +159,15 @@ struct last {
                           << m_num_blocks << " blocks" << std::endl;
             }
 
-            m_stream_generator.processed(block);
-            m_stream_generator.release_processed_blocks();
+            m_stream_generator.release_block();
         }
 
         auto end = clock_type::now();
         std::chrono::duration<double> elapsed = end - start;
         m_CPU_time += elapsed.count();
+
+        std::cerr << "processed " << m_current_block_id << "/" << m_num_blocks
+                  << " blocks" << std::endl;
 
         std::vector<float_vector_type>().swap(m_probs);
 
