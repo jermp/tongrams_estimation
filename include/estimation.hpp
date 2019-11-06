@@ -6,7 +6,8 @@
 #include "statistics.hpp"
 #include "counting/counting.hpp"
 #include "adjusting/adjusting.hpp"
-#include "last.hpp"
+#include "last/last.hpp"
+#include "last/write.hpp"
 // #include "parallel_last.hpp"
 
 namespace tongrams {
