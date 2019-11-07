@@ -15,7 +15,7 @@ namespace tongrams {
 
 namespace util {
 
-void write(std::ofstream& os, byte_range const& br) {
+void write(std::ofstream& os, byte_range br) {
     os.write(reinterpret_cast<const char*>(br.first),
              (br.second - br.first) * sizeof(char));
 }
