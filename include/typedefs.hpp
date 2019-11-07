@@ -10,6 +10,7 @@ typedef uint32_t ngram_id;
 typedef uint32_t word_id;
 typedef uint32_t range_id;
 typedef uint32_t occurrence;
+typedef uint64_t count_type;
 typedef uint64_t iterator;
 typedef float float_t;
 typedef std::vector<uint64_t> counts;

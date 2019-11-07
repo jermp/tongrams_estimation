@@ -2,8 +2,8 @@
 
 #include "util_types.hpp"
 #include "ngram.hpp"
-#include "../external/tongrams/include/utils/util.hpp"
 #include "comparators.hpp"
+#include "../external/tongrams/include/utils/util.hpp"
 
 namespace tongrams {
 
@@ -32,83 +32,69 @@ struct ngram_pointer {
     word_id* data;
 };
 
-typedef ngram_pointer ngram_pointer_type;
-typedef context_order_comparator<ngram_pointer_type>
-    context_order_comparator_type;
+typedef context_order_comparator<ngram_pointer> context_order_comparator_type;
 
 struct ngrams_block_statistics {
     word_id max_word_id;
     uint64_t max_count;
 };
 
+struct ngrams_allocator {
+    ngrams_allocator() : m_offset(0), m_alignment(0) {}
+
+    ngrams_allocator(uint8_t order) {
+        init(order);
+    }
+
+    void init(uint8_t order) {
+        m_offset = 0;
+        m_alignment = ngram::size_of(order);
+    }
+
+    void resize(std::vector<uint8_t>& memory, uint64_t num_ngrams) {
+        memory.resize((m_alignment + sizeof(count_type)) * num_ngrams);
+    }
+
+    template <typename Iterator>
+    void construct(ngram_pointer& ptr, Iterator begin, Iterator end,
+                   count_type count) {
+        uint64_t n = 0;
+        for (; begin != end; ++n, ++begin) ptr.data[n] = *begin;
+        *(ptr.value(n)) = count;
+    }
+
+    auto allocate(std::vector<uint8_t>& memory) {
+        assert(m_offset < memory.size());
+        ngram_pointer ptr;
+        ptr.data = reinterpret_cast<word_id*>(&memory[m_offset]);
+        m_offset += m_alignment + sizeof(count_type);
+        return ptr;
+    }
+
+    auto allocate(std::vector<uint8_t>& memory, uint64_t i) {
+        uint64_t offset = i * (m_alignment + sizeof(count_type));
+        assert(offset < memory.size());
+        ngram_pointer ptr;
+        ptr.data = reinterpret_cast<word_id*>(&memory[offset]);
+        return ptr;
+    }
+
+    uint8_t order() const {
+        return m_alignment / sizeof(word_id);
+    }
+
+    void swap(ngrams_allocator& other) {
+        std::swap(m_offset, other.m_offset);
+        std::swap(m_alignment, other.m_alignment);
+    }
+
+private:
+    uint64_t m_offset;
+    uint64_t m_alignment;
+};
+
 struct ngrams_block {
     typedef typename std::vector<ngram_pointer>::iterator iterator;
-
-    struct allocator {
-        allocator() : m_offset(0), m_alignment(0) {}
-
-        allocator(uint8_t order) {
-            init(order);
-        }
-
-        void init(uint8_t order) {
-            m_offset = 0;
-            m_alignment = ngram::size_of(order);
-        }
-
-        void resize(std::vector<uint8_t>& memory, uint64_t num_ngrams) {
-            memory.resize((m_alignment + sizeof(count_type)) * num_ngrams);
-        }
-
-        template <typename Iterator>
-        void construct(ngram_pointer& ptr, Iterator begin, Iterator end,
-                       count_type count) {
-            uint64_t n = 0;
-            for (; begin != end; ++n, ++begin) ptr.data[n] = *begin;
-            *(ptr.value(n)) = count;
-        }
-
-        auto allocate(std::vector<uint8_t>& memory) {
-            assert(m_offset < memory.size());
-            ngram_pointer ptr;
-            ptr.data = reinterpret_cast<word_id*>(&memory[m_offset]);
-            m_offset += m_alignment + sizeof(count_type);
-            return ptr;
-        }
-
-        // NOTE: pos is an index, not an offset
-        auto allocate(std::vector<uint8_t>& memory, uint64_t pos) {
-            uint64_t offset = pos * (m_alignment + sizeof(count_type));
-            assert(offset < memory.size());
-            ngram_pointer ptr;
-            ptr.data = reinterpret_cast<word_id*>(&memory[offset]);
-            return ptr;
-        }
-
-        uint64_t allocated() const {
-            return m_offset;
-        }
-
-        uint8_t order() const {
-            return m_alignment / sizeof(word_id);
-        }
-
-        void swap(allocator& other) {
-            std::swap(m_offset, other.m_offset);
-            std::swap(m_alignment, other.m_alignment);
-        }
-
-        void print_stats() const {
-            std::cerr << "allocator stats:\n";
-            std::cerr << "m_offset = " << m_offset << "\n";
-            std::cerr << "m_alignment = " << m_alignment << "\n";
-            std::cerr << "order() = " << int(order()) << "\n";
-        }
-
-    private:
-        uint64_t m_offset;
-        uint64_t m_alignment;
-    };
 
     ngrams_block() {}
 
@@ -141,7 +127,6 @@ struct ngrams_block {
         return *this;
     };
 
-    // TODO: change name in size_of
     inline static size_t record_size(uint8_t order) {
         return ngram::size_of(order) + sizeof(count_type);
     }
@@ -162,15 +147,11 @@ struct ngrams_block {
         m_index.resize(num_ngrams);
     }
 
-    auto& index() {
-        return m_index;
-    }
-
     void release() {
         ngrams_block().swap(*this);
     }
 
-    void push_back(ngram_pointer const& ptr) {
+    void push_back(ngram_pointer ptr) {
         m_index.push_back(ptr);
     }
 
@@ -182,19 +163,11 @@ struct ngrams_block {
     }
 
     template <typename Iterator>
-    void set(uint64_t pos, Iterator begin, Iterator end, count_type count) {
-        assert(pos < size());
-        auto ptr = m_allocator.allocate(m_memory, pos);
+    void set(uint64_t i, Iterator begin, Iterator end, count_type count) {
+        assert(i < size());
+        auto ptr = m_allocator.allocate(m_memory, i);
         m_allocator.construct(ptr, begin, end, count);
-        m_index[pos] = ptr;
-    }
-
-    void print_allocator_stats() const {
-        m_allocator.print_stats();
-    }
-
-    inline uint64_t allocated_bytes() const {
-        return m_allocator.allocated();
+        m_index[i] = ptr;
     }
 
     inline size_t size() const {
@@ -231,7 +204,7 @@ struct ngrams_block {
         m_index.reserve(num_ngrams);
         assert(m_memory.size() > 0);
         for (uint64_t i = 0; i != num_ngrams; ++i) {
-            auto ptr = m_allocator.allocate(m_memory, i);
+            auto ptr = m_allocator.allocate(m_memory);
             push_back(ptr);
         }
         assert(size() == num_ngrams);
@@ -240,14 +213,6 @@ struct ngrams_block {
     inline ngram_pointer operator[](size_t i) {
         assert(i < size());
         return m_index[i];
-    }
-
-    inline ngram_pointer access(size_t i) {
-        uint64_t offset = i * record_size();
-        assert(offset < m_memory.size());
-        ngram_pointer ptr;
-        ptr.data = reinterpret_cast<word_id*>(m_memory.data() + offset);
-        return ptr;
     }
 
     inline count_type& value(size_t i) {
@@ -263,11 +228,11 @@ struct ngrams_block {
         return m_index.end();
     }
 
-    inline auto& front() {
+    inline ngram_pointer& front() {
         return m_index.front();
     }
 
-    inline auto& back() {
+    inline ngram_pointer& back() {
         return m_index.back();
     }
 
@@ -306,23 +271,19 @@ struct ngrams_block {
         return ret;
     }
 
-    void steal(ngrams_block& other) {
-        m_memory.swap(other.m_memory);
-        m_index.swap(other.m_index);
-    }
-
     void swap(ngrams_block& other) {
-        steal(other);
-        m_allocator.swap(other.m_allocator);
         std::swap(stats.max_word_id, other.stats.max_word_id);
         std::swap(stats.max_count, other.stats.max_count);
+        m_memory.swap(other.m_memory);
+        m_allocator.swap(other.m_allocator);
+        m_index.swap(other.m_index);
     }
 
     ngrams_block_statistics stats;
 
 protected:
     std::vector<uint8_t> m_memory;
-    allocator m_allocator;
+    ngrams_allocator m_allocator;
     std::vector<ngram_pointer> m_index;
 };
 

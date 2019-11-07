@@ -53,16 +53,17 @@ struct adjusting {
     void run() {
         auto start = clock_type::now();
         std::vector<std::string> filenames;
-        directory tmp_dir(m_config.tmp_dirname);
-        for (auto const& path : tmp_dir) {
-            if (!is_directory(path) and is_regular_file(path)) {
-                if (path.extension() == constants::file_extension::counts) {
-                    filenames.push_back(path.string());
+        {
+            essentials::directory tmp_dir(m_config.tmp_dirname);
+            for (auto const& filename : tmp_dir) {
+                if (filename.extension == constants::file_extension::counts) {
+                    filenames.push_back(filename.fullpath);
                 }
             }
         }
 
         size_t num_files_to_merge = filenames.size();
+        assert(num_files_to_merge > 0);
         std::cerr << "merging " << num_files_to_merge << " files" << std::endl;
 
         uint64_t record_size = ngrams_block::record_size(m_config.max_order);
@@ -152,7 +153,7 @@ struct adjusting {
 
                 if (not equal) {
                     if (num_Ngrams >= limit and
-                        compare_i<ngram_pointer_type>(
+                        compare_i<ngram_pointer>(
                             min, back, m_comparator.begin()) > 0  // greater
                     ) {
                         save_offsets();

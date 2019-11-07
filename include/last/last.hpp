@@ -32,13 +32,14 @@ struct last {
         assert(m_num_blocks);
         std::cout << "processing " << m_num_blocks << " blocks" << std::endl;
         uint8_t N = m_config.max_order;
-        directory tmp_dir(m_config.tmp_dirname);
-        for (auto const& path : tmp_dir) {
-            if (not is_directory(path) and is_regular_file(path) and
-                path.extension() == constants::file_extension::merged) {
-                m_stream_generator.open(path.string());
-                async_fetch_next_block();
-                break;
+        {
+            essentials::directory tmp_dir(m_config.tmp_dirname);
+            for (auto const& filename : tmp_dir) {
+                if (filename.extension == constants::file_extension::merged) {
+                    m_stream_generator.open(filename.fullpath);
+                    async_fetch_next_block();
+                    break;
+                }
             }
         }
 

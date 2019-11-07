@@ -40,7 +40,7 @@ struct writer {
         m_buffer.init();
         m_buffer.reserve(BLOCK_BITS);
 
-        auto explicit_write = [&](ngram_pointer_type const& ptr) {
+        auto explicit_write = [&](ngram_pointer const& ptr) {
             for (int i = 0; i < N; ++i) {
                 m_buffer.append_bits(ptr[i], w);
             }
@@ -239,7 +239,7 @@ struct ngrams_block {
         }
 
         inline auto operator*() const {
-            ngram_pointer_type ptr;
+            ngram_pointer ptr;
             ptr.data = reinterpret_cast<word_id*>(m_back.begin());
             return ptr;
         }
@@ -315,7 +315,7 @@ struct ngrams_block {
     };
 
     typedef fc_iterator iterator;
-    typedef ngram_pointer_type pointer;
+    typedef ngram_pointer pointer;
 
     ngrams_block(uint8_t N, size_t size, uint8_t w, uint8_t v)
         : m_size(size), m_N(N), m_w(w), m_v(v) {}
@@ -335,7 +335,7 @@ struct ngrams_block {
         cache prev(m_N);
         prev.init();
         prev.store(reinterpret_cast<uint8_t const*>((*it).data), record_bytes);
-        ngram_pointer_type prev_ptr;
+        ngram_pointer prev_ptr;
         prev_ptr.data = reinterpret_cast<word_id*>(prev.begin());
 
         ++it;

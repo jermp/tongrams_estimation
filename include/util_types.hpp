@@ -13,6 +13,8 @@
 
 #include "../external/tongrams/include/utils/util_types.hpp"
 
+#include "typedefs.hpp"
+
 namespace tongrams {
 
 bool equal_to(word_id const* x, word_id const* y, size_t n) {
@@ -47,8 +49,6 @@ struct adaptor {
     }
 };
 
-typedef uint64_t count_type;
-
 struct filename_generator {
     filename_generator(std::string const& dir_name, std::string const& prefix,
                        std::string const& extension, int seed = -1)
@@ -58,15 +58,15 @@ struct filename_generator {
         next();
     }
 
-    auto& operator()() {
+    auto const& operator()() {
         return m_cur_filename;
     }
 
-    auto& prx() {
+    auto const& prx() {
         return m_prefix;
     }
 
-    auto& ext() {
+    auto const& ext() {
         return m_extension;
     }
 
@@ -76,11 +76,7 @@ struct filename_generator {
 
     void next() {
         ++m_seed;
-        m_cur_filename = prx() + std::to_string(m_seed) + ext();
-    }
-
-    auto get_filename(int seed) {
-        return prx() + std::to_string(seed) + ext();
+        m_cur_filename = prx() + std::to_string(m_seed) + "." + ext();
     }
 
 private:
@@ -88,45 +84,6 @@ private:
     std::string m_prefix;
     std::string m_extension;
     std::string m_cur_filename;
-};
-
-// use essentials::directory instead of this??
-struct directory {
-    directory(std::string const& dir) : m_dir_path(dir.c_str()) {}
-
-    typedef boost::filesystem::directory_iterator iterator;  // non-recursive
-
-    struct directory_iterator {
-        directory_iterator(iterator const& it) : m_it(it) {}
-
-        void operator++() {
-            ++m_it;
-        }
-
-        boost::filesystem::path operator*() {
-            return m_it->path();
-        }
-
-        bool operator!=(directory_iterator const& rhs) const {
-            return this->m_it != rhs.m_it;
-        }
-
-    private:
-        iterator m_it;
-    };
-
-    directory_iterator begin() const {
-        iterator it(m_dir_path);
-        return directory_iterator(it);
-    }
-
-    directory_iterator end() const {
-        iterator it;
-        return directory_iterator(it);
-    }
-
-private:
-    boost::filesystem::path m_dir_path;
 };
 
 template <typename T>

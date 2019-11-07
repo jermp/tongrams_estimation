@@ -7,8 +7,8 @@ namespace tongrams {
 namespace constants {
 
 namespace file_extension {
-static const std::string counts(".c");
-static const std::string merged(".m");
+static const std::string counts("c");
+static const std::string merged("m");
 }  // namespace file_extension
 
 static const std::string default_tmp_dirname(".");
