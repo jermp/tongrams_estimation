@@ -1,6 +1,5 @@
 #pragma once
 
-#include "adjusting_common.hpp"
 #include "configuration.hpp"
 #include "tmp.hpp"
 
@@ -43,7 +42,7 @@ struct adjusting_writer {
         std::cerr << "\twrite time: " << m_time << "\n";
     }
 
-    void push(adjusting_step::output_block_type& block) {
+    void push(ngrams_block& block) {
         m_buffer.lock();
         m_buffer.push(block);
         m_buffer.unlock();
@@ -61,7 +60,7 @@ struct adjusting_writer {
     }
 
 private:
-    semi_sync_queue<adjusting_step::output_block_type> m_buffer;
+    semi_sync_queue<ngrams_block> m_buffer;
     std::ofstream m_os;
     std::thread m_thread;
     uint64_t m_num_flushes;

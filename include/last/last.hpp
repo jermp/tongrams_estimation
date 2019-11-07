@@ -5,12 +5,11 @@
 #include "../external/tongrams/include/utils/util.hpp"
 
 #include "index_types.hpp"
-#include "stream2.hpp"
+#include "stream.hpp"
 
 namespace tongrams {
 
 struct last {
-    typedef stream::ngrams_block_partition input_block_type;
     typedef stream::floats_vec<> float_vector_type;
 
     last(configuration const& config, tmp::data& tmp_data,
@@ -81,9 +80,7 @@ struct last {
         for (; m_current_block_id < m_num_blocks;) {
             auto* block = m_stream_generator.get_block();
             async_fetch_next_block();
-
             uint8_t N = block->order();
-            block->materialize_index();
 
             for (uint8_t n = 1; n < N; ++n) {
                 m_probs[n - 1].reserve(block->size());
@@ -223,8 +220,8 @@ private:
     double m_O_time;
 
     struct state {
-        state(uint8_t N, input_block_type::iterator begin,
-              input_block_type::iterator end)
+        state(uint8_t N, ngrams_block::iterator begin,
+              ngrams_block::iterator end)
             : range_lengths(N, 0)
             , probs_offsets(N, 0)
             , iterators(N, begin)
@@ -232,8 +229,8 @@ private:
             , N_gram_denominator(0) {}
         std::vector<uint64_t> range_lengths;
         std::vector<uint64_t> probs_offsets;
-        std::vector<input_block_type::iterator> iterators;
-        const input_block_type::iterator end;
+        std::vector<ngrams_block::iterator> iterators;
+        const ngrams_block::iterator end;
         uint64_t N_gram_denominator;
     };
 

@@ -2,11 +2,10 @@
 
 #include "util.hpp"
 #include "constants.hpp"
-#include "stream2.hpp"
+#include "stream.hpp"
 #include "statistics.hpp"
 #include "merge_utils.hpp"
 
-#include "adjusting_common.hpp"
 #include "adjusting_writer.hpp"
 
 namespace tongrams {
@@ -89,7 +88,6 @@ struct adjusting {
 
         auto get_block = [](StreamGenerator& gen) {
             auto* block = gen.get_block();
-            block->materialize_index();
             assert(block->template is_sorted<context_order_comparator_type>(
                 block->begin(), block->end()));
             return block;
@@ -105,24 +103,16 @@ struct adjusting {
         }
 
         uint64_t num_ngrams_per_block = load_size / record_size;
-        uint8_t N = m_config.max_order;
-        adjusting_step::output_block_type result(N);
-        result.resize_memory(num_ngrams_per_block);
-        result.reserve_index(num_ngrams_per_block);
-        result.range.begin = 0;
-        auto& index = result.index();
-
-        uint64_t partition_size = num_ngrams_per_block;
-        uint64_t limit = num_ngrams_per_block;
-
         std::cerr << "num_ngrams_per_block = " << num_ngrams_per_block
                   << " ngrams" << std::endl;
-        std::cerr << "partition_size = " << partition_size << " ngrams"
-                  << std::endl;
-        std::cerr << "limit = " << limit << " ngrams" << std::endl;
+
+        uint8_t N = m_config.max_order;
+        ngrams_block result(N);
+        result.resize_memory(num_ngrams_per_block);
+        result.reserve_index(num_ngrams_per_block);
+        uint64_t limit = num_ngrams_per_block;
 
         auto compute_left_extensions = [&]() {
-            result.range.end = index.size();
             assert(result.template is_sorted<context_order_comparator_type>(
                 result.begin(), result.end()));
             auto start = clock_type::now();
@@ -141,7 +131,7 @@ struct adjusting {
             std::vector<uint64_t> offsets = {offset};
             m_tmp_data.blocks_offsets.push_back(std::move(offsets));
             prev_offset = num_Ngrams;
-            limit = num_Ngrams + partition_size;
+            limit = num_Ngrams + num_ngrams_per_block;
         };
 
         m_writer.start();
@@ -153,7 +143,7 @@ struct adjusting {
             // std::cerr << "min element: ";
             // min.print(N);
 
-            if (!index.size()) {
+            if (!result.size()) {
                 result.push_back(min.data, min.data + N, *(min.value(N)));
                 ++num_Ngrams;
             } else {
@@ -162,13 +152,13 @@ struct adjusting {
 
                 if (not equal) {
                     if (num_Ngrams >= limit and
-                        compare_i<typename input_block_type::pointer>(
+                        compare_i<ngram_pointer_type>(
                             min, back, m_comparator.begin()) > 0  // greater
                     ) {
                         save_offsets();
                     }
 
-                    if (index.size() == num_ngrams_per_block) {
+                    if (result.size() == num_ngrams_per_block) {
                         compute_left_extensions();
                         auto start = clock_type::now();
                         while (m_writer.size() > 0)
@@ -182,8 +172,7 @@ struct adjusting {
                         result.init(N);
                         result.resize_memory(num_ngrams_per_block);
                         result.reserve_index(num_ngrams_per_block);
-                        result.range.begin = 0;
-                        assert(index.empty());
+                        assert(result.empty());
                     }
 
                     result.push_back(min.data, min.data + N, *(min.value(N)));
@@ -262,4 +251,5 @@ private:
     double m_total_smooth_time;
     double m_total_time_waiting_for_disk;
 };
+
 }  // namespace tongrams

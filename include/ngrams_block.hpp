@@ -201,8 +201,40 @@ struct ngrams_block {
         return m_index.size();
     }
 
+    inline bool empty() const {
+        return m_index.empty();
+    }
+
     inline uint8_t order() const {
         return m_allocator.order();
+    }
+
+    void write_memory(std::ofstream& os) {
+        assert(m_memory.size() > 0);
+        std::streamsize num_bytes = size() * record_size();
+        os.write(reinterpret_cast<char const*>(m_memory.data()), num_bytes);
+    }
+
+    char* initialize_memory(size_t num_bytes) {
+        m_memory.resize(num_bytes);
+        return reinterpret_cast<char*>(m_memory.data());
+    }
+
+    char* read_bytes(std::ifstream& is, char* dest, size_t num_bytes) {
+        is.read(dest, static_cast<std::streamsize>(num_bytes));
+        dest += num_bytes;
+        return dest;
+    }
+
+    void materialize_index(uint64_t num_ngrams) {
+        m_index.clear();
+        m_index.reserve(num_ngrams);
+        assert(m_memory.size() > 0);
+        for (uint64_t i = 0; i != num_ngrams; ++i) {
+            auto ptr = m_allocator.allocate(m_memory, i);
+            push_back(ptr);
+        }
+        assert(size() == num_ngrams);
     }
 
     inline ngram_pointer operator[](size_t i) {

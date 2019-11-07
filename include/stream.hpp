@@ -3,93 +3,201 @@
 #include <fstream>
 #include <numeric>
 
+#include "util.hpp"
 #include "ngrams_block.hpp"
+#include "front_coding.hpp"
+
 #include "../external/tongrams/include/utils/util_types.hpp"
 
 namespace tongrams {
 namespace stream {
 
-namespace constants {
-static const int invalid_id = -1;
-}
+typedef ngrams_block uncompressed_block_type;
+typedef fc::ngrams_block<context_order_comparator_type> compressed_block_type;
 
-// NOTE: this class is useless, we can do everything with ngrams_block
-struct ngrams_block_partition : ngrams_block {
-    ngrams_block_partition(uint8_t ngram_order) {
-        init(ngram_order);
+template <typename Block>
+struct async_ngrams_file_source {
+    async_ngrams_file_source() : m_file_size(0), m_handle_ptr(nullptr) {}
+
+    async_ngrams_file_source(std::string const& filename)
+        : m_file_size(0), m_handle_ptr(nullptr) {
+        open(filename);
     }
 
-    typedef count_type value;
-    typedef ngram_pointer pointer;
-
-    void init(uint8_t ngram_order) {
-        ngrams_block::init(ngram_order);
-        range = {0, 0};
-        prd = false;
-    }
-
-    ngrams_block_partition(ngrams_block_partition&& rhs) {
-        *this = std::move(rhs);
-    }
-
-    inline ngrams_block_partition& operator=(ngrams_block_partition&& rhs) {
-        if (this != &rhs) swap(rhs);
-        return *this;
-    };
-
-    ngrams_block_partition(ngrams_block_partition const&) : ngrams_block() {
-        assert(false);
-    }
-
-    ngrams_block_partition& operator=(ngrams_block_partition const&) {
-        assert(false);
-        return *this;
-    };
-
-    uint64_t size() const {
-        assert(range.end >= range.begin);
-        return range.end - range.begin;
-    }
-
-    void swap(ngrams_block_partition& other) {
-        ngrams_block::swap(other);
-        std::swap(range, other.range);
-        std::swap(prd, other.prd);
-    }
-
-    void write_memory(std::ofstream& os) {
-        assert(!m_memory.empty());
-        size_t offset = range.begin * record_size();
-        std::streamsize num_bytes = size() * record_size();
-        os.write(reinterpret_cast<char const*>(m_memory.data() + offset),
-                 num_bytes);
-    }
-
-    char* initialize_memory(size_t num_bytes) {
-        m_memory.resize(num_bytes);
-        return reinterpret_cast<char*>(m_memory.data());
-    }
-
-    char* read_bytes(std::ifstream& is, char* dest, size_t num_bytes) {
-        is.read(dest, static_cast<std::streamsize>(num_bytes));
-        dest += num_bytes;
-        return dest;
-    }
-
-    void materialize_index() {
-        m_index.clear();
-        uint64_t num_ngrams = range.end - range.begin;
-        m_index.reserve(num_ngrams);
-        assert(m_memory.size() > 0);
-        for (uint64_t i = range.begin; i != range.end; ++i) {
-            auto ptr = m_allocator.allocate(m_memory, i);
-            push_back(ptr);
+    void open(std::string const& filename) {
+        m_filename = filename;
+        m_is.open(filename.c_str(), std::ifstream::binary);
+        if (not m_is.good()) {
+            throw std::runtime_error(
+                "Error in opening binary file, it may not exist or be "
+                "malformed.");
         }
-        assert(size() == num_ngrams);
+        m_is.seekg(0, m_is.end);
+        m_file_size = static_cast<size_t>(m_is.tellg());
+        m_is.seekg(0, m_is.beg);
     }
 
-    pointer_range range;
-    bool prd;  // processed
+    void close() {
+        util::wait(m_handle_ptr);
+        if (m_is.is_open()) m_is.close();
+    }
+
+    void close_and_remove() {
+        close();
+        std::remove(m_filename.c_str());
+    }
+
+    size_t size() const {
+        return m_buffer.size();
+    }
+
+    bool empty() const {
+        return m_buffer.empty();
+    }
+
+    Block* get_block() {
+        if (empty()) util::wait(m_handle_ptr);
+        assert(size());
+        return &m_buffer.front();
+    }
+
+    void release_block() {
+        m_buffer.front().release();
+        m_buffer.pop_front();
+    }
+
+protected:
+    std::string m_filename;
+    std::ifstream m_is;
+    size_t m_file_size;
+    std::deque<Block> m_buffer;
+    std::unique_ptr<std::thread> m_handle_ptr;
+};
+
+struct uncompressed_stream_generator
+    : async_ngrams_file_source<uncompressed_block_type> {
+    typedef uncompressed_block_type block_type;
+
+    uncompressed_stream_generator() {}
+
+    uncompressed_stream_generator(uint8_t ngram_order)
+        : m_read_bytes(0), m_N(ngram_order), m_eos(false), m_I_time(0.0) {}
+
+    void open(std::string const& filename) {
+        async_ngrams_file_source::open(filename);
+    }
+
+    void async_fetch_next_block(size_t num_bytes) {
+        util::wait(m_handle_ptr);
+        m_handle_ptr =
+            util::async_call(uncompressed_stream_generator::fetch, num_bytes);
+    }
+
+    void fetch_next_block(size_t num_bytes) {
+        fetch(num_bytes);
+    }
+
+    double I_time() const {
+        return m_I_time;
+    }
+
+    bool eos() const {
+        return m_eos;
+    }
+
+private:
+    size_t m_read_bytes;
+    uint8_t m_N;
+    bool m_eos;
+    double m_I_time;
+
+    std::function<void(size_t)> fetch = [&](size_t bytes) {
+        if (eos()) return;
+        auto s = clock_type::now();
+        block_type block(m_N);
+        if (m_read_bytes + bytes > m_file_size) {
+            bytes = m_file_size - m_read_bytes;
+            m_eos = true;
+        }
+        m_read_bytes += bytes;
+        assert(bytes % block.record_size() == 0);
+        uint64_t num_ngrams = bytes / block.record_size();
+        char* begin = block.initialize_memory(bytes);
+        block.read_bytes(m_is, begin, bytes);
+        block.materialize_index(num_ngrams);
+        m_buffer.push_back(std::move(block));
+        auto e = clock_type::now();
+        std::chrono::duration<double> elapsed = e - s;
+        m_I_time += elapsed.count();
+    };
+};
+
+struct compressed_stream_generator
+    : async_ngrams_file_source<compressed_block_type> {
+    typedef compressed_block_type block_type;
+
+    compressed_stream_generator() {}
+
+    compressed_stream_generator(uint8_t ngram_order)
+        : m_read_bytes(0)
+        , m_N(ngram_order)
+        , m_w(0)
+        , m_v(0)
+        , m_eos(false)
+        , m_I_time(0.0) {}
+
+    void open(std::string const& filename) {
+        async_ngrams_file_source::open(filename);
+        essentials::load_pod(m_is, m_w);
+        essentials::load_pod(m_is, m_v);
+        m_read_bytes = sizeof(m_w) + sizeof(m_v);
+    }
+
+    void async_fetch_next_block(size_t /*num_bytes*/) {
+        util::wait(m_handle_ptr);
+        m_handle_ptr = util::async_call(compressed_stream_generator::fetch);
+    }
+
+    void fetch_next_block(size_t /*num_bytes*/) {
+        fetch();
+    }
+
+    double I_time() const {
+        return m_I_time;
+    }
+
+    bool eos() const {
+        return m_eos;
+    }
+
+private:
+    size_t m_read_bytes;
+    uint8_t m_N;
+    uint8_t m_w;
+    uint8_t m_v;
+    bool m_eos;
+    double m_I_time;
+
+    std::function<void(void)> fetch = [&]() {
+        if (eos()) return;
+        auto s = clock_type::now();
+        size_t size = 0;
+        essentials::load_pod(m_is, size);
+        m_read_bytes += sizeof(size);
+        assert(size > 0);
+        block_type block(m_N, size, m_w, m_v);
+        size_t bytes = fc::BLOCK_BYTES;
+        if (m_read_bytes + bytes > m_file_size) {
+            bytes = m_file_size - m_read_bytes;
+            m_eos = true;
+        }
+        m_read_bytes += bytes;
+        block.read(m_is, bytes);
+        m_buffer.push_back(std::move(block));
+        auto e = clock_type::now();
+        std::chrono::duration<double> elapsed = e - s;
+        m_I_time += elapsed.count();
+    };
 };
 
 struct writer {
