@@ -95,16 +95,6 @@ private:
         step.print_stats();
         std::cout << "\"total\":" << total_time;
         std::cout << "}";
-
-        // #ifndef NDEBUG
-        // if (m_config.compress_blocks) {
-        //     debug::check_sorted_files<stream::compressed_stream_generator,
-        //                               context_order_comparator_type>(m_config);
-        // } else {
-        //     debug::check_sorted_files<stream::uncompressed_stream_generator,
-        //                               context_order_comparator_type>(m_config);
-        // }
-        // #endif
     }
 
     std::function<void(void)> write_vocab = [&]() {

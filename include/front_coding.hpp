@@ -318,7 +318,7 @@ struct ngrams_block {
     typedef ngram_pointer_type pointer;
 
     ngrams_block(uint8_t N, size_t size, uint8_t w, uint8_t v)
-        : prd(false), m_size(size), m_N(N), m_w(w), m_v(v) {}
+        : m_size(size), m_N(N), m_w(w), m_v(v) {}
 
     void read(std::ifstream& is, size_t bytes) {
         // std::cerr << "reading " << bytes << " bytes from file" << std::endl;
@@ -373,7 +373,6 @@ struct ngrams_block {
         std::swap(m_N, other.m_N);
         std::swap(m_w, other.m_w);
         std::swap(m_v, other.m_v);
-        std::swap(prd, other.prd);
     }
 
     void release() {
@@ -393,8 +392,6 @@ struct ngrams_block {
     size_t size() const {
         return m_size;
     }
-
-    bool prd;
 
 private:
     std::vector<uint8_t> m_memory;
