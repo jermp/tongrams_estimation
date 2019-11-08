@@ -95,7 +95,7 @@ void last::write(uint8_t n, last::state& s) {  // write ngram
         assert(backoff <= s.N_gram_denominator);
         backoff /= s.N_gram_denominator;
 
-        std::for_each(it - l, it, [&](auto const& ptr) {
+        std::for_each(it - l, it, [&](auto ptr) {
             uint64_t count = *(ptr.value(N));
             assert(count > 0);
             float prob = (static_cast<float>(count) - m_stats.D(N, count)) /

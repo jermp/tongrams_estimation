@@ -12,7 +12,7 @@ static const std::string merged("m");
 }  // namespace file_extension
 
 static const std::string default_tmp_dirname(".");
-static const std::string default_output_filename("index");
+static const std::string default_output_filename("out.bin");
 
 static const std::string empty("</>");
 
