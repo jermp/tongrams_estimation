@@ -1,6 +1,5 @@
 #pragma once
 
-#include "typedefs.hpp"
 #include "ngrams_block.hpp"
 #include "vocabulary.hpp"
 
@@ -19,8 +18,8 @@ struct statistics {
     };
 
     statistics(uint8_t order)
-        : t(order, counts(5, 0))
-        , r(order, counts(5, 0))
+        : t(order, std::vector<uint64_t>(5, 0))
+        , r(order, std::vector<uint64_t>(5, 0))
         , current_range_id(order, 0)
 
         // order - 1 because modified counts for N-grams are the raw occurrence
@@ -63,16 +62,13 @@ struct statistics {
 
     bool update(uint8_t n, word_id left, word_id right) {
         assert(n > 0 and n < t.size());
-
         auto& stat = stats[n - 1][right];
         auto& occ = occs[n - 1][right];
 
         if (n != 1) {  // do not reset occurrence for uni-grams
             if (stat.id != current_range_id[n - 1]) {  // range changes
-
                 // update range id if different from the current one
                 // and reset number of occurrences
-
                 stat.id = current_range_id[n - 1];
                 occ = 0;
                 stat.left = invalid_word_id;
@@ -82,15 +78,13 @@ struct statistics {
         if (stat.left != left) {
             stat.left = left;
             ++occ;
-            assert(occ);
-
+            assert(occ > 0);
             if (occ == 1) {
                 ++r[n - 1][0];
             } else if (occ > 1 and occ <= 5) {
                 ++r[n - 1][occ - 1];
                 --r[n - 1][occ - 2];
             }
-
             return true;
         }
 
@@ -107,27 +101,25 @@ struct statistics {
         }
     }
 
-    void print_stats() {  // debug purposes
+    // void print_stats() {  // debug purposes
+    //     std::cerr << "modified counts for unigrams" << std::endl;
+    //     for (auto x : occs[0]) {
+    //         std::cerr << x << std::endl;
+    //     }
+    //     for (uint8_t n = 1; n <= t.size(); ++n) {
+    //         for (uint64_t k = 1; k <= 5; ++k) {
+    //             std::cerr << "r_" << int(n) << "(" << k << ") = "
+    //                       << r[n - 1][k - 1] << std::endl;
+    //             std::cerr << "t_" << int(n) << "(" << k
+    //                       << ") = " << t[n - 1][k - 1] << std::endl;
+    //         }
+    //     }
+    // }
 
-        std::cerr << "modified counts for unigrams" << std::endl;
-        for (auto x : occs[0]) {
-            std::cerr << x << std::endl;
-        }
-
-        for (uint8_t n = 1; n <= t.size(); ++n) {
-            for (uint64_t k = 1; k <= 5; ++k) {
-                // std::cerr << "r_" << int(n) << "(" << k << ") = "
-                //           << r[n - 1][k - 1] << std::endl;
-                std::cerr << "t_" << int(n) << "(" << k
-                          << ") = " << t[n - 1][k - 1] << std::endl;
-            }
-        }
-    }
-
-    std::vector<counts>
+    std::vector<std::vector<uint64_t>>
         t;  // number of n-grams, for n = 1,...,4, having modified count equal
             // to 1, 2, 3, 4 and 4+ globally (i.e., all ranges)
-    std::vector<counts>
+    std::vector<std::vector<uint64_t>>
         r;  // number of n-grams, for n = 1,...,4, having modified count equal
             // to 1, 2, 3, 4 and 4+ in a range
     std::vector<range_id>

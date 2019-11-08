@@ -9,7 +9,6 @@
 
 #include "trie_level.hpp"
 #include "configuration.hpp"
-#include "typedefs.hpp"
 #include "statistics.hpp"
 
 /*

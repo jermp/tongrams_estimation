@@ -1,6 +1,5 @@
 #pragma once
 
-#include "typedefs.hpp"
 #include "vocabulary.hpp"
 #include "tmp.hpp"
 #include "statistics.hpp"

@@ -2,8 +2,8 @@
 
 #include "constants.hpp"
 #include "util_types.hpp"
-#include "iterators.hpp"
 
+#include "../external/tongrams/include/utils/iterators.hpp"
 #include "../external/tongrams/include/utils/pools.hpp"
 
 namespace tongrams {
@@ -33,17 +33,14 @@ struct vocabulary {
         }
 
         void load(std::string const& vocab_filename) {
-            lines_iterator it(vocab_filename.c_str());
+            text_lines it(vocab_filename.c_str());
             for (uint64_t i = 0; i < m_vocab_size; ++i) {
-                auto unigram = *it;
-                byte_range br(unigram.first,
-                              unigram.second - 1);  // discard '\n'
-                if (bytes::equal_bytes(br, constants::empty_byte_range)) {
+                auto unigram = it.next_word();
+                if (bytes::equal_bytes(unigram, constants::empty_byte_range)) {
                     push_empty();
                 } else {
-                    push_back(br);
+                    push_back(unigram);
                 }
-                ++it;
             }
         }
 

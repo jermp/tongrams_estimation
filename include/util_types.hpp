@@ -3,6 +3,9 @@
 #include <deque>
 #include <mutex>
 #include <thread>
+#include <chrono>
+#include <vector>
+#include <sparsehash/dense_hash_map>
 
 #define BOOST_THREAD_VERSION 4
 #define BOOST_THREAD_PROVIDES_EXECUTORS
@@ -13,9 +16,16 @@
 
 #include "../external/tongrams/include/utils/util_types.hpp"
 
-#include "typedefs.hpp"
-
 namespace tongrams {
+
+typedef uint32_t ngram_id;
+typedef uint32_t word_id;
+typedef uint32_t range_id;
+typedef uint32_t occurrence;
+typedef uint64_t count_type;
+typedef uint64_t iterator;
+typedef google::dense_hash_map<uint64_t, word_id> words_map;
+typedef std::chrono::high_resolution_clock clock_type;
 
 bool equal_to(word_id const* x, word_id const* y, size_t n) {
     return memcmp(x, y, n) == 0;

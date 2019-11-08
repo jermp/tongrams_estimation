@@ -1,11 +1,11 @@
 #pragma once
 
-#include "constants.hpp"
-#include "util.hpp"
 #include "../external/tongrams/include/utils/util.hpp"
 
-#include "index_types.hpp"
+#include "constants.hpp"
+#include "util.hpp"
 #include "stream.hpp"
+#include "indexing/index_types.hpp"
 
 namespace tongrams {
 

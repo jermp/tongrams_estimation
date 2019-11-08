@@ -1,6 +1,5 @@
 #pragma once
 
-#include "typedefs.hpp"
 #include "../external/tongrams/include/utils/iterators.hpp"
 #include "../external/tongrams/include/utils/util_types.hpp"
 

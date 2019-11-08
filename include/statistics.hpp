@@ -16,8 +16,8 @@ struct statistics {
             , m_tmp_stats(tmp_stats)
             , m_tmp_data(tmp_data)
             , m_ngram_cache(config.max_order)
-            , m_t(config.max_order, counts(4, 0))
-            , m_D(config.max_order, floats(4, 0))
+            , m_t(config.max_order, std::vector<uint64_t>(4, 0))
+            , m_D(config.max_order, std::vector<float>(4, 0))
             , m_num_ngrams(config.max_order, 0)
             , m_total_num_words(0)
             , m_unk_prob(0.0) {}
@@ -29,7 +29,7 @@ struct statistics {
             for (uint8_t n = 1; n < N; ++n) {
                 m_tmp_stats.resize(n, m_vocab_size);
             }
-            m_tmp_data.probs_offsets.resize(N, counts(0, 0));
+            m_tmp_data.probs_offsets.resize(N, std::vector<uint64_t>(0, 0));
             for (uint8_t n = 2; n <= N; ++n) {
                 m_tmp_data.probs_offsets[n - 1].resize(m_vocab_size, 0);
             }
@@ -161,9 +161,9 @@ struct statistics {
         tmp::statistics& m_tmp_stats;
         tmp::data& m_tmp_data;
         ngram_cache m_ngram_cache;
-        std::vector<counts> m_t;
-        std::vector<floats> m_D;
-        counts m_num_ngrams;
+        std::vector<std::vector<uint64_t>> m_t;
+        std::vector<std::vector<float>> m_D;
+        std::vector<uint64_t> m_num_ngrams;
         uint64_t m_total_num_words;  // total numer of words in the text corpus
         size_t m_vocab_size;
         float m_unk_prob;  // prob of <unk> word, which is backoff(empty) /
@@ -211,8 +211,8 @@ struct statistics {
 
     statistics(uint8_t order)
         : m_num_ngrams(order, 0)
-        , m_t(order, counts(4, 0))
-        , m_D(order, floats(4, 0))
+        , m_t(order, std::vector<uint64_t>(4, 0))
+        , m_D(order, std::vector<float>(4, 0))
         , m_total_num_words(0)
         , m_unk_prob(0.0) {}
 
@@ -279,9 +279,9 @@ struct statistics {
     }
 
 private:
-    counts m_num_ngrams;
-    std::vector<counts> m_t;
-    std::vector<floats> m_D;
+    std::vector<uint64_t> m_num_ngrams;
+    std::vector<std::vector<uint64_t>> m_t;
+    std::vector<std::vector<float>> m_D;
     uint64_t m_total_num_words;
     float m_unk_prob;
 };
