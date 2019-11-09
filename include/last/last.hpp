@@ -5,6 +5,7 @@
 #include "constants.hpp"
 #include "util.hpp"
 #include "stream.hpp"
+#include "indexing/estimation_builder.hpp"
 #include "indexing/index_types.hpp"
 
 namespace tongrams {
@@ -211,7 +212,7 @@ private:
     std::vector<uint64_t> m_pointers;
     std::vector<float_vector_type> m_probs;  // buffer of uncompressed probs
 
-    suffix_trie_index::builder m_index_builder;
+    suffix_trie_index::estimation_builder m_index_builder;
 
     uint64_t m_current_block_id;
     uint64_t m_fetched_block_id;
