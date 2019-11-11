@@ -10,16 +10,18 @@ int main(int argc, char** argv) {
     using namespace tongrams;
 
     configuration config;
-    config.page_size = sysconf(_SC_PAGESIZE);
-    size_t available_ram = config.page_size * sysconf(_SC_PHYS_PAGES);
-    config.RAM = available_ram;
-
     cmd_line_parser::parser parser(argc, argv);
     parser.add("text_filename", "Input text filename.");
     parser.add("order", "Language model order. It must be > 0 and <= " +
-                            std::to_string(global::max_order) + ".");
-    parser.add("ram", "Amount to RAM dedicated to estimation in GiB.", "--ram",
-               false);
+                            std::to_string(global::max_order) +
+                            ". Default is " + std::to_string(config.max_order) +
+                            ".");
+    parser.add("ram",
+               "Amount to RAM dedicated to estimation in GiB. Default is " +
+                   std::to_string(static_cast<uint64_t>(
+                       static_cast<double>(config.RAM) / essentials::GiB)) +
+                   " GiB.",
+               "--ram", false);
     parser.add(
         "tmp_dir",
         "Temporary directory used for estimation. Default is directory '" +
@@ -87,20 +89,12 @@ int main(int argc, char** argv) {
         config.output_filename = parser.get<std::string>("out");
     }
 
-    config.text_chunk_size = config.RAM;
-    if (config.text_chunk_size % config.page_size) {
-        std::cerr
-            << "text_chunk_size must be a multiple of the operating system "
-               "granularity: "
-            << config.page_size << " bytes" << std::endl;
-        return 1;
-    }
-
     config.vocab_tmp_subdirname = config.tmp_dirname + "/vocab";
     bool ok = essentials::create_directory(config.tmp_dirname) and
               essentials::create_directory(config.vocab_tmp_subdirname);
     if (not ok) return 1;
 
+    size_t available_ram = sysconf(_SC_PAGESIZE) * sysconf(_SC_PHYS_PAGES);
     std::cerr << "estimating with " << config.RAM << "/" << available_ram
               << " bytes of RAM"
               << " (" << config.RAM * 100.0 / available_ram << "\%)\n";

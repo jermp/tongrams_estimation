@@ -8,9 +8,10 @@ namespace tongrams {
 
 struct configuration {
     configuration()
-        : text_chunk_size(1 * essentials::GiB)
+        : RAM(1 * essentials::GiB)
         , max_order(5)
         , num_threads(std::thread::hardware_concurrency())
+        , text_size(0)
         , tmp_dirname(constants::default_tmp_dirname)
         , vocab_tmp_subdirname(tmp_dirname + "/vocab")
         , vocab_filename("/vocabulary")
@@ -21,8 +22,6 @@ struct configuration {
               global::default_backoffs_quantization_bits) {}
 
     uint64_t RAM;
-    uint64_t page_size;
-    uint64_t text_chunk_size;
     uint64_t max_order;
     uint64_t num_threads;
     uint64_t text_size;

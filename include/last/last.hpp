@@ -5,8 +5,8 @@
 #include "constants.hpp"
 #include "util.hpp"
 #include "stream.hpp"
-#include "indexing/estimation_builder.hpp"
-#include "indexing/index_types.hpp"
+#include "estimation_builder.hpp"
+#include "index_types.hpp"
 
 namespace tongrams {
 
@@ -177,7 +177,7 @@ struct last {
 
         essentials::logger("compressing index");
         start = clock_type::now();
-        suffix_trie_index index;
+        reversed_trie_index index;
         m_index_builder.build(index, m_config);
         end = clock_type::now();
         elapsed = end - start;
@@ -212,7 +212,7 @@ private:
     std::vector<uint64_t> m_pointers;
     std::vector<float_vector_type> m_probs;  // buffer of uncompressed probs
 
-    suffix_trie_index::estimation_builder m_index_builder;
+    reversed_trie_index::estimation_builder m_index_builder;
 
     uint64_t m_current_block_id;
     uint64_t m_fetched_block_id;

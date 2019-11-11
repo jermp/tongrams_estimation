@@ -24,7 +24,6 @@ struct counting {
         , m_I_time(0.0)
         , m_writer(config, tmp_data, constants::file_extension::counts)
         , m_reader(config, tmp_data, m_writer) {
-        assert(m_config.page_size > 0);
         uint64_t hash_empty = hash_utils::hash_empty;
         tmp_data.vocab_builder.push_empty();
         tmp_data.word_ids[hash_empty] = 0;  // token '</>' gets word id 0
@@ -33,16 +32,18 @@ struct counting {
     void run() {
         bool file_begin = true;
         bool file_end = false;
-        uint64_t blocks =
-            util::ceil_div(m_config.text_size, m_config.text_chunk_size);
+        static constexpr uint64_t mm_region_size = 1 * essentials::GiB;
+        uint64_t blocks = util::ceil_div(m_config.text_size, mm_region_size);
+        uint64_t page_size = sysconf(_SC_PAGESIZE);
 
         m_writer.start();
+
         for (uint64_t block = 0, begin = 0, end = 0,
                       page_id = 0;  // disk page containing the beginning of
                                     // current file block
              block != blocks; ++block) {
-            uint64_t chunk_size = m_config.text_chunk_size;
-            uint64_t offset = page_id * m_config.page_size;
+            uint64_t chunk_size = mm_region_size;
+            uint64_t offset = page_id * page_size;
             if (offset + chunk_size > m_config.text_size) {
                 file_end = true;
                 chunk_size = m_config.text_size - offset;
@@ -54,7 +55,7 @@ struct counting {
             util::optimize_sequential_access(m_data, end);
             if (!is_aligned(end - 1)) align_backward(begin, --end);
             uint64_t n = end - begin;
-            assert(n != 0 and n <= m_config.text_chunk_size);
+            assert(n != 0 and n <= mm_region_size);
             m_reader.init(m_data, begin, end, file_begin, file_end);
             m_reader.run();
             file_begin = false;
@@ -66,13 +67,13 @@ struct counting {
                 assert(is_aligned(end - 1));
             }
 
-            uint64_t num_pages = util::ceil_div(n, m_config.page_size);
+            uint64_t num_pages = util::ceil_div(n, page_size);
             assert(num_pages > 0);
             page_id += num_pages - 1;
             begin = offset + end;
             // now begin points to the beginning of 1 window back
-            assert(begin >= page_id * m_config.page_size);
-            begin -= page_id * m_config.page_size;
+            assert(begin >= page_id * page_size);
+            begin -= page_id * page_size;
             m_file.close();
         }
 

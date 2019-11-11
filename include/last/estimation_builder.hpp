@@ -1,19 +1,20 @@
 #pragma once
 
-#include "suffix_trie.hpp"
+#include "../external/tongrams/include/trie_prob_lm.hpp"
 
 namespace tongrams {
 
-template <typename Vocabulary, typename Values, typename Grams,
-          typename Pointers>
-struct suffix_trie<Vocabulary, Values, Grams, Pointers>::estimation_builder {
+template <typename Vocabulary, typename Mapper, typename Values, typename Ranks,
+          typename Grams, typename Pointers>
+struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
+                    Pointers>::estimation_builder {
     estimation_builder() {}
 
     estimation_builder(uint8_t order, configuration const& config,
                        statistics& stats)
         : m_order(order)
         , m_unk_prob(stats.unk_prob())
-        , m_levels(order)
+        , m_arrays(order)
         , m_next_positions(order, 0) {
         building_util::check_order(m_order);
 
@@ -22,7 +23,7 @@ struct suffix_trie<Vocabulary, Values, Grams, Pointers>::estimation_builder {
         m_vocab_values.resize(vocab_size,
                               64);  // uni-grams' values are not quantized
 
-        m_levels.front().pointers.resize(
+        m_arrays.front().pointers.resize(
             vocab_size + 1, util::ceil_log2(stats.num_ngrams(2) + 1));
         m_probs.resize(order - 1);
         m_backoffs.resize(order - 2);
@@ -37,8 +38,8 @@ struct suffix_trie<Vocabulary, Values, Grams, Pointers>::estimation_builder {
 
         for (uint8_t order = 2; order <= m_order; ++order) {
             uint64_t n = stats.num_ngrams(order);
-            auto& level = m_levels[order - 1];
-            level.words_ids.resize(n, log_vocab_size);
+            auto& level = m_arrays[order - 1];
+            level.word_ids.resize(n, log_vocab_size);
             level.probs_backoffs_ranks.resize(
                 n, config.probs_quantization_bits +
                        ((order != m_order) ? config.backoffs_quantization_bits
@@ -73,12 +74,12 @@ struct suffix_trie<Vocabulary, Values, Grams, Pointers>::estimation_builder {
 
     void set_next_word(uint8_t n, word_id id) {
         assert(n >= 2 and n <= m_order);
-        m_levels[n - 1].words_ids.push_back(id);
+        m_arrays[n - 1].word_ids.push_back(id);
     }
 
     void set_next_pointer(uint8_t n, uint64_t pointer) {
         assert(n >= 1 and n < m_order);
-        m_levels[n - 1].pointers.push_back(pointer);
+        m_arrays[n - 1].pointers.push_back(pointer);
     }
 
     void set_next_backoff(uint8_t n, float backoff) {
@@ -86,22 +87,22 @@ struct suffix_trie<Vocabulary, Values, Grams, Pointers>::estimation_builder {
         uint64_t backoff_rank = m_backoffs.rank(n - 2, backoff, 1);
         uint64_t& next_pos = m_next_positions[n - 1];
         uint64_t prob_backoff_rank =
-            m_levels[n - 1].probs_backoffs_ranks[next_pos];
+            m_arrays[n - 1].probs_backoffs_ranks[next_pos];
         uint64_t probs_quantization_bits = m_probs.quantization_bits(n - 2);
         assert(probs_quantization_bits);
         prob_backoff_rank |= (backoff_rank << probs_quantization_bits);
-        m_levels[n - 1].probs_backoffs_ranks.push_back(prob_backoff_rank);
+        m_arrays[n - 1].probs_backoffs_ranks.push_back(prob_backoff_rank);
         ++next_pos;
     }
 
     void set_backoff(uint8_t n, uint64_t pos, float backoff) {
         assert(n >= 2 and n < m_order);
         uint64_t backoff_rank = m_backoffs.rank(n - 2, backoff, 1);
-        uint64_t prob_backoff_rank = m_levels[n - 1].probs_backoffs_ranks[pos];
+        uint64_t prob_backoff_rank = m_arrays[n - 1].probs_backoffs_ranks[pos];
         uint64_t probs_quantization_bits = m_probs.quantization_bits(n - 2);
         assert(probs_quantization_bits);
         prob_backoff_rank |= (backoff_rank << probs_quantization_bits);
-        m_levels[n - 1].probs_backoffs_ranks.set(pos, prob_backoff_rank);
+        m_arrays[n - 1].probs_backoffs_ranks.set(pos, prob_backoff_rank);
     }
 
     void set_next_unigram_values(float prob, float backoff) {
@@ -118,24 +119,23 @@ struct suffix_trie<Vocabulary, Values, Grams, Pointers>::estimation_builder {
 
     void set_word(uint8_t n, uint64_t pos, word_id id) {
         assert(n >= 2 and n <= m_order);
-        m_levels[n - 1].words_ids.set(pos, id);
+        m_arrays[n - 1].word_ids.set(pos, id);
     }
 
     void set_pointer(uint8_t n, uint64_t pos, uint64_t pointer) {
         assert(n >= 1 and n < m_order);
-        m_levels[n - 1].pointers.set(pos, pointer);
+        m_arrays[n - 1].pointers.set(pos, pointer);
     }
 
     void set_prob(uint8_t n, uint64_t pos, float prob) {
         assert(n >= 2 and n <= m_order);
-        uint64_t prob_backoff_rank = m_levels[n - 1].probs_backoffs_ranks[pos];
+        uint64_t prob_backoff_rank = m_arrays[n - 1].probs_backoffs_ranks[pos];
         uint64_t prob_rank = m_probs.rank(n - 2, prob, 0);
         prob_backoff_rank |= prob_rank;
-        m_levels[n - 1].probs_backoffs_ranks.set(pos, prob_backoff_rank);
+        m_arrays[n - 1].probs_backoffs_ranks.set(pos, prob_backoff_rank);
     }
 
-    void build(suffix_trie<Vocabulary, Values, Grams, Pointers>& trie,
-               configuration const& config) {
+    void build(trie_prob_lm& trie, configuration const& config) {
         trie.m_order = m_order;
         trie.m_unk_prob = m_unk_prob;
 
@@ -174,7 +174,7 @@ struct suffix_trie<Vocabulary, Values, Grams, Pointers>::estimation_builder {
                 m_probs.build(trie.m_probs_averages);
                 m_backoffs.build(trie.m_backoffs_averages);
 
-                trie.m_levels.resize(m_order);
+                trie.m_arrays.resize(m_order);
 
                 // #pragma omp parallel for
                 for (uint8_t n = 2; n <= m_order; ++n) {
@@ -182,7 +182,7 @@ struct suffix_trie<Vocabulary, Values, Grams, Pointers>::estimation_builder {
                         // prefix sums pointers for N-grams
                         std::cerr << "prefix summing pointers for "
                                   << int(m_order) << "-grams" << std::endl;
-                        auto& pointers = m_levels[n - 2].pointers;
+                        auto& pointers = m_arrays[n - 2].pointers;
                         uint64_t prev = 0;
                         for (uint64_t pos = 1; pos < pointers.size(); ++pos) {
                             prev += pointers[pos];
@@ -190,30 +190,30 @@ struct suffix_trie<Vocabulary, Values, Grams, Pointers>::estimation_builder {
                         }
                     }
 
-                    std::cerr << "building " << int(n) << "-level words_ids"
+                    std::cerr << "building " << int(n) << "-level word_ids"
                               << std::endl;
-                    std::cerr << "m_levels[" << int(n) - 2
+                    std::cerr << "m_arrays[" << int(n) - 2
                               << "].pointers.back() = "
-                              << m_levels[n - 2].pointers.back() << "; ";
-                    std::cerr << "m_levels[" << int(n) - 1
-                              << "].words_ids.size() = "
-                              << m_levels[n - 1].words_ids.size() << std::endl;
-                    assert(m_levels[n - 2].pointers.back() ==
-                           m_levels[n - 1].words_ids.size());
+                              << m_arrays[n - 2].pointers.back() << "; ";
+                    std::cerr << "m_arrays[" << int(n) - 1
+                              << "].word_ids.size() = "
+                              << m_arrays[n - 1].word_ids.size() << std::endl;
+                    assert(m_arrays[n - 2].pointers.back() ==
+                           m_arrays[n - 1].word_ids.size());
 
-                    m_levels[n - 1].build_words_ids(n, trie.m_levels[n - 1],
-                                                    m_levels[n - 2].pointers);
+                    m_arrays[n - 1].build_word_ids(n, trie.m_arrays[n - 1],
+                                                   m_arrays[n - 2].pointers);
                     std::cerr << "DONE" << std::endl;
 
-                    m_levels[n - 1].build_probs_backoffs_ranks(
-                        trie.m_levels[n - 1]);
+                    m_arrays[n - 1].build_probs_backoffs_ranks(
+                        trie.m_arrays[n - 1]);
                 }
 
                 // #pragma omp parallel for
                 for (uint8_t n = 1; n < m_order; ++n) {
                     std::cerr << "building " << int(n) << "-level pointers"
                               << std::endl;
-                    m_levels[n - 1].build_pointers(trie.m_levels[n - 1]);
+                    m_arrays[n - 1].build_pointers(trie.m_arrays[n - 1]);
                     std::cerr << "DONE" << std::endl;
                 }
             });
@@ -225,10 +225,10 @@ struct suffix_trie<Vocabulary, Values, Grams, Pointers>::estimation_builder {
     // for bebug
     // void print_stats() const {
     //     int n = 1;
-    //     for (auto& l : m_levels) {
+    //     for (auto& l : m_arrays) {
     //         std::cerr << "===========\n";
     //         std::cerr << "level-" << n << " statistics:\n";
-    //         for (auto x : l.words_ids) {
+    //         for (auto x : l.word_ids) {
     //             std::cerr << x << " ";
     //         }
     //         std::cerr << std::endl;
@@ -251,7 +251,7 @@ struct suffix_trie<Vocabulary, Values, Grams, Pointers>::estimation_builder {
         m_vocab_values.swap(other.m_vocab_values);
         m_probs.swap(other.m_probs);
         m_backoffs.swap(other.m_backoffs);
-        m_levels.swap(other.m_levels);
+        m_arrays.swap(other.m_arrays);
     }
 
 private:
@@ -260,7 +260,7 @@ private:
     compact_vector::builder m_vocab_values;
     typename Values::builder m_probs;
     typename Values::builder m_backoffs;
-    std::vector<typename level_type::builder> m_levels;
+    std::vector<typename sorted_array_type::estimation_builder> m_arrays;
     std::vector<uint64_t> m_next_positions;
 };
 
