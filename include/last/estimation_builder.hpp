@@ -136,7 +136,7 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
 
     void build(trie_prob_lm& trie, configuration const& config) {
         trie.m_order = m_order;
-        trie.m_unk_prob = m_unk_prob;
+        trie.m_unk_prob = std::log10(m_unk_prob);
 
         parallel_executor p(2);
         task_region(*(p.executor), [&](task_region_handle& trh) {
@@ -179,8 +179,8 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
                 for (uint8_t n = 2; n <= m_order; ++n) {
                     if (n == m_order) {
                         // prefix sums pointers for N-grams
-                        std::cerr << "prefix summing pointers for "
-                                  << int(m_order) << "-grams" << std::endl;
+                        // std::cerr << "prefix summing pointers for "
+                        //           << int(m_order) << "-grams" << std::endl;
                         auto& pointers = m_arrays[n - 2].pointers;
                         uint64_t prev = 0;
                         for (uint64_t pos = 1; pos < pointers.size(); ++pos) {
@@ -189,31 +189,30 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
                         }
                     }
 
-                    std::cerr << "building " << int(n) << "-level word_ids"
-                              << std::endl;
-                    std::cerr << "m_arrays[" << int(n) - 2
-                              << "].pointers.back() = "
-                              << m_arrays[n - 2].pointers.back() << "; ";
-                    std::cerr << "m_arrays[" << int(n) - 1
-                              << "].word_ids.size() = "
-                              << m_arrays[n - 1].word_ids.size() << std::endl;
+                    // std::cerr << "building " << int(n) << "-level word_ids"
+                    //           << std::endl;
+                    // std::cerr << "m_arrays[" << int(n) - 2
+                    //           << "].pointers.back() = "
+                    //           << m_arrays[n - 2].pointers.back() << "; ";
+                    // std::cerr << "m_arrays[" << int(n) - 1
+                    //           << "].word_ids.size() = "
+                    //           << m_arrays[n - 1].word_ids.size() <<
+                    //           std::endl;
                     assert(m_arrays[n - 2].pointers.back() ==
                            m_arrays[n - 1].word_ids.size());
-
                     m_arrays[n - 1].build_word_ids(n, trie.m_arrays[n - 1],
                                                    m_arrays[n - 2].pointers);
-                    std::cerr << "DONE" << std::endl;
-
                     m_arrays[n - 1].build_probs_backoffs_ranks(
                         trie.m_arrays[n - 1]);
+                    // std::cerr << "DONE" << std::endl;
                 }
 
                 // #pragma omp parallel for
                 for (uint8_t n = 1; n < m_order; ++n) {
-                    std::cerr << "building " << int(n) << "-level pointers"
-                              << std::endl;
+                    // std::cerr << "building " << int(n) << "-level pointers"
+                    //           << std::endl;
                     m_arrays[n - 1].build_pointers(trie.m_arrays[n - 1]);
-                    std::cerr << "DONE" << std::endl;
+                    // std::cerr << "DONE" << std::endl;
                 }
             });
         });
