@@ -18,7 +18,7 @@ struct counting_reader {
         , m_next_word_id(1)  // 0 is reserved for token '</>'
         , m_CPU_time(0.0) {
         static constexpr double weight = 0.9;
-        size_t bytes_per_ngram = ngram::size_of(config.max_order) +
+        size_t bytes_per_ngram = sizeof_ngram(config.max_order) +
                                  sizeof(count_type) +  // payload
                                  sizeof(word_id*) +    // pointer
                                  sizeof(ngram_id);     // hashset
@@ -71,7 +71,8 @@ struct counting_reader {
         // w_{m-1} w_m </> </> </>
         // w_m </> </> </> </>
         if (m_file_end) {
-            for (uint64_t i = 0; i < m_max_order - 2; ++i) {
+            assert(m_max_order >= 2);
+            for (int i = 0; i < m_max_order - 2; ++i) {
                 count();
             }
         }
@@ -129,8 +130,8 @@ private:
     void count() {
         advance();
 
-        uint64_t hash = hash_utils::murmur_hash64(
-            m_window.data(), ngram::size_of(m_max_order), 0);
+        uint64_t hash = hash_utils::murmur_hash64(m_window.data(),
+                                                  sizeof_ngram(m_max_order), 0);
         ngram_id at;
         bool found = m_counts.find_or_insert(m_window.get(), hash, at);
         if (found) {

@@ -6,6 +6,8 @@
 namespace tongrams {
 namespace constants {
 
+static const uint64_t invalid_hash = 0;
+
 namespace file_extension {
 static const std::string counts("c");
 static const std::string merged("m");

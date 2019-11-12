@@ -222,7 +222,9 @@ struct floats_vec {
     typedef T value_type;
     typedef typename std::vector<T>::iterator iterator;
 
-    floats_vec(size_t n) : m_floats(n) {}
+    floats_vec(size_t n) : m_floats(n) {
+        m_reint.uint_value = 0;
+    }
 
     void clear() {
         m_floats.clear();
@@ -237,6 +239,7 @@ struct floats_vec {
     }
 
     void push_back(float x) {
+        m_reint.uint_value = 0;
         m_reint.float_value = x;
         m_floats.push_back(m_reint.uint_value);
     }

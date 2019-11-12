@@ -32,15 +32,14 @@ struct ngrams_hash_block {
         m_block.resize_index(size);
     }
 
-    bool find_or_insert(ngram const& key, iterator hint, ngram_id& at) {
+    bool find_or_insert(ngram_type const& key, iterator hint, ngram_id& at) {
         Prober prober(hint, buckets());
         iterator start = *prober;
         iterator it = start;
 
         while (m_data[it] != invalid_ngram_id) {
             assert(it < buckets());
-            if (equal_to(m_block[m_data[it]].data, key.data.data(),
-                         m_num_bytes)) {
+            if (equal_to(m_block[m_data[it]].data, key.data(), m_num_bytes)) {
                 at = m_data[it];
                 return true;
             }
@@ -58,7 +57,7 @@ struct ngrams_hash_block {
         // insert
         m_data[it] = m_size++;
         at = m_data[it];
-        m_block.set(at, key.data.begin(), key.data.end(), 1);
+        m_block.set(at, key.begin(), key.end(), 1);
         return false;
     }
 

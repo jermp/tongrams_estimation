@@ -1,7 +1,6 @@
 #pragma once
 
 #include "util_types.hpp"
-#include "ngram.hpp"
 #include "comparators.hpp"
 #include "../external/tongrams/include/utils/util.hpp"
 
@@ -48,7 +47,7 @@ struct ngrams_allocator {
 
     void init(uint8_t order) {
         m_offset = 0;
-        m_alignment = ngram::size_of(order);
+        m_alignment = sizeof_ngram(order);
     }
 
     void resize(std::vector<uint8_t>& memory, uint64_t num_ngrams) {
@@ -128,7 +127,7 @@ struct ngrams_block {
     };
 
     inline static size_t record_size(uint8_t order) {
-        return ngram::size_of(order) + sizeof(count_type);
+        return sizeof_ngram(order) + sizeof(count_type);
     }
 
     inline uint64_t record_size() const {

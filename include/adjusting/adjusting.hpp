@@ -149,7 +149,7 @@ struct adjusting {
                 ++num_Ngrams;
             } else {
                 auto& back = result.back();
-                bool equal = equal_to(min.data, back.data, ngram::size_of(N));
+                bool equal = equal_to(min.data, back.data, sizeof_ngram(N));
 
                 if (not equal) {
                     if (num_Ngrams >= limit and

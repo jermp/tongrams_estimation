@@ -24,8 +24,13 @@ typedef uint32_t range_id;
 typedef uint32_t occurrence;
 typedef uint64_t count_type;
 typedef uint64_t iterator;
+typedef std::vector<word_id> ngram_type;
 typedef google::dense_hash_map<uint64_t, word_id> words_map;
 typedef std::chrono::high_resolution_clock clock_type;
+
+uint64_t sizeof_ngram(uint8_t order) {
+    return sizeof(word_id) * order;
+}
 
 bool equal_to(word_id const* x, word_id const* y, size_t n) {
     return memcmp(x, y, n) == 0;
