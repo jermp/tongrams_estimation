@@ -11,7 +11,6 @@
 #include <fstream>
 
 namespace tongrams {
-
 namespace util {
 
 void write(std::ofstream& os, byte_range br) {

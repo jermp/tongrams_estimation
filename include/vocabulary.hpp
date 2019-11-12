@@ -76,9 +76,8 @@ struct vocabulary {
         uint64_t end = m_offsets[id + 1];
         if (LIKELY(begin != end)) {
             return m_unigram_strings.get_bytes(m_base_addr, begin, end);
-        } else {
-            return constants::empty_byte_range;
         }
+        return constants::empty_byte_range;
     }
 
 private:

@@ -21,20 +21,20 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
         uint64_t vocab_size = stats.num_ngrams(1);
         size_t log_vocab_size = util::ceil_log2(vocab_size + 1);
         m_vocab_values.resize(vocab_size,
-                              64);  // uni-grams' values are not quantized
+                              64);  // values are not quantized
 
         m_arrays.front().pointers.resize(
             vocab_size + 1, util::ceil_log2(stats.num_ngrams(2) + 1));
         m_probs.resize(order - 1);
         m_backoffs.resize(order - 2);
+
         std::vector<float> probs;
         std::vector<float> backoffs;
-
         size_t probs_levels = uint64_t(1) << config.probs_quantization_bits;
         size_t backoffs_levels = uint64_t(1)
                                  << config.backoffs_quantization_bits;
-        float prob_quantum = 1.0 / probs_levels;
-        float backoff_quantum = 1.0 / backoffs_levels;
+        double prob_quantum = 1.0 / probs_levels;
+        double backoff_quantum = 1.0 / backoffs_levels;
 
         for (uint8_t order = 2; order <= m_order; ++order) {
             uint64_t n = stats.num_ngrams(order);
@@ -45,23 +45,18 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
                        ((order != m_order) ? config.backoffs_quantization_bits
                                            : 0));
             probs.resize(probs_levels, 0.0);
-            float prev = 0.0;
-            for (auto& x : probs) {
-                x += prev + prob_quantum;
-                prev = x;
+            for (uint64_t i = 1; i != probs_levels + 1; ++i) {
+                probs[i - 1] = std::log10(i * prob_quantum);
+                std::cout << probs[i - 1] << " ";
             }
-
             m_probs.add_sequence(order - 1, config.probs_quantization_bits,
                                  probs);
 
             if (order != m_order) {
                 backoffs.resize(backoffs_levels + 1, 0.0);
-                float prev = 0.0;
-                auto begin = backoffs.begin() + 1;
-                for (; begin != backoffs.end(); ++begin) {
-                    auto& x = *begin;
-                    x += prev + backoff_quantum;
-                    prev = x;
+                for (uint64_t i = 1; i != backoffs_levels + 1; ++i) {
+                    backoffs[i] = std::log10(i * backoff_quantum);
+                    std::cout << backoffs[i] << " ";
                 }
                 m_backoffs.add_sequence(
                     order - 1, config.backoffs_quantization_bits, backoffs);
@@ -84,7 +79,9 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
 
     void set_next_backoff(uint8_t n, float backoff) {
         assert(n >= 2 and n < m_order);
-        uint64_t backoff_rank = m_backoffs.rank(n - 2, backoff, 1);
+        uint64_t backoff_rank =
+            m_backoffs.rank(n - 2, std::log10(backoff), 1  // reserved
+            );
         uint64_t& next_pos = m_next_positions[n - 1];
         uint64_t prob_backoff_rank =
             m_arrays[n - 1].probs_backoffs_ranks[next_pos];
@@ -97,7 +94,9 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
 
     void set_backoff(uint8_t n, uint64_t pos, float backoff) {
         assert(n >= 2 and n < m_order);
-        uint64_t backoff_rank = m_backoffs.rank(n - 2, backoff, 1);
+        uint64_t backoff_rank =
+            m_backoffs.rank(n - 2, std::log10(backoff), 1  // reserved
+            );
         uint64_t prob_backoff_rank = m_arrays[n - 1].probs_backoffs_ranks[pos];
         uint64_t probs_quantization_bits = m_probs.quantization_bits(n - 2);
         assert(probs_quantization_bits);
@@ -107,13 +106,13 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
 
     void set_next_unigram_values(float prob, float backoff) {
         uint64_t packed = 0;
-        bits::pack(packed, prob, backoff);
+        bits::pack(packed, std::log10(prob), std::log10(backoff));
         m_vocab_values.push_back(packed);
     }
 
     void set_unigram_values(uint64_t pos, float prob, float backoff) {
         uint64_t packed = 0;
-        bits::pack(packed, prob, backoff);
+        bits::pack(packed, std::log10(prob), std::log10(backoff));
         m_vocab_values.set(pos, packed);
     }
 
@@ -130,7 +129,7 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
     void set_prob(uint8_t n, uint64_t pos, float prob) {
         assert(n >= 2 and n <= m_order);
         uint64_t prob_backoff_rank = m_arrays[n - 1].probs_backoffs_ranks[pos];
-        uint64_t prob_rank = m_probs.rank(n - 2, prob, 0);
+        uint64_t prob_rank = m_probs.rank(n - 2, std::log10(prob), 0);
         prob_backoff_rank |= prob_rank;
         m_arrays[n - 1].probs_backoffs_ranks.set(pos, prob_backoff_rank);
     }
