@@ -1,6 +1,16 @@
 Tongrams Estimation
 --------
 
+### Compiling the code
+
+	mkdir -p build; cd build
+	cmake ..
+	make -j
+
+### Sample usage
+
+    ./estimate ../test_data/1Billion.1M 5 --tmp tmp_dir --ram 0.25 --out out.bin
+    ./external/tongrams/score out.bin ../test_data/1Billion.1M
 
 ### External dependencies
 

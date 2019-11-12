@@ -11,7 +11,7 @@ static const std::string counts("c");
 static const std::string merged("m");
 }  // namespace file_extension
 
-static const std::string default_tmp_dirname(".");
+static const std::string default_tmp_dirname("./tmp_dir");
 static const std::string default_output_filename("out.bin");
 
 static const std::string empty("</>");

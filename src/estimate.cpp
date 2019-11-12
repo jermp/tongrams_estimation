@@ -13,9 +13,7 @@ int main(int argc, char** argv) {
     cmd_line_parser::parser parser(argc, argv);
     parser.add("text_filename", "Input text filename.");
     parser.add("order", "Language model order. It must be > 0 and <= " +
-                            std::to_string(global::max_order) +
-                            ". Default is " + std::to_string(config.max_order) +
-                            ".");
+                            std::to_string(global::max_order) + ".");
     parser.add("ram",
                "Amount to RAM dedicated to estimation in GiB. Default is " +
                    std::to_string(static_cast<uint64_t>(
