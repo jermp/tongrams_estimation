@@ -102,7 +102,7 @@ private:
         size_t vocab_size = m_stats.num_ngrams(1);
         vocabulary vocab;
         m_tmp_data.vocab_builder.build(vocab);
-        for (size_t id = 0; id < vocab_size; ++id) {
+        for (size_t id = 0; id != vocab_size; ++id) {
             util::write(os, vocab[id]);
             os << "\n";
         }
