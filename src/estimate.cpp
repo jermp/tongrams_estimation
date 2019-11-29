@@ -59,12 +59,14 @@ int main(int argc, char** argv) {
     config.max_order = parser.get<uint64_t>("order");
     building_util::check_order(config.max_order);
 
+    size_t available_ram = sysconf(_SC_PAGESIZE) * sysconf(_SC_PHYS_PAGES);
+
     if (parser.parsed("ram")) {
         uint64_t ram =
             static_cast<uint64_t>(parser.get<double>("ram") * essentials::GiB);
         if (ram > config.RAM) {
             std::cerr << "Warning: this machine has "
-                      << config.RAM / essentials::GiB << " GiB of RAM."
+                      << available_ram / essentials::GiB << " GiB of RAM."
                       << std::endl;
         } else {
             config.RAM = ram;
@@ -92,7 +94,6 @@ int main(int argc, char** argv) {
               essentials::create_directory(config.vocab_tmp_subdirname);
     if (not ok) return 1;
 
-    size_t available_ram = sysconf(_SC_PAGESIZE) * sysconf(_SC_PHYS_PAGES);
     std::cerr << "estimating with " << config.RAM << "/" << available_ram
               << " bytes of RAM"
               << " (" << config.RAM * 100.0 / available_ram << "\%)\n";
