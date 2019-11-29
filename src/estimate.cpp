@@ -64,10 +64,12 @@ int main(int argc, char** argv) {
     if (parser.parsed("ram")) {
         uint64_t ram =
             static_cast<uint64_t>(parser.get<double>("ram") * essentials::GiB);
-        if (ram > config.RAM) {
+        if (ram > available_ram) {
             std::cerr << "Warning: this machine has "
                       << available_ram / essentials::GiB << " GiB of RAM."
                       << std::endl;
+            std::cerr << "Thus, using defalt amount of "
+                      << config.RAM / / essentials::GiB << " GiB".
         } else {
             config.RAM = ram;
         }
