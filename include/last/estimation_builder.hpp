@@ -47,7 +47,6 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
             probs.resize(probs_levels, 0.0);
             for (uint64_t i = 1; i != probs_levels + 1; ++i) {
                 probs[i - 1] = std::log10(i * prob_quantum);
-                std::cout << probs[i - 1] << " ";
             }
             m_probs.add_sequence(order - 1, config.probs_quantization_bits,
                                  probs);
@@ -56,7 +55,6 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
                 backoffs.resize(backoffs_levels + 1, 0.0);
                 for (uint64_t i = 1; i != backoffs_levels + 1; ++i) {
                     backoffs[i] = std::log10(i * backoff_quantum);
-                    std::cout << backoffs[i] << " ";
                 }
                 m_backoffs.add_sequence(
                     order - 1, config.backoffs_quantization_bits, backoffs);
