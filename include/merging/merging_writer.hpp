@@ -88,7 +88,7 @@ private:
             for (uint64_t i = 0; i != m_order; ++i) {
                 auto br = m_vocab[ngram[i]];
                 util::write(m_os, br);
-                if (i != m_order) m_os << " ";
+                if (i != m_order - 1) m_os << " ";
             }
             m_os << "\t" << *ngram.value(m_order) << "\n";
         }
