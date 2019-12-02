@@ -32,6 +32,7 @@ struct ngram_pointer {
 };
 
 typedef context_order_comparator<ngram_pointer> context_order_comparator_type;
+typedef prefix_order_comparator<ngram_pointer> prefix_order_comparator_type;
 
 struct ngrams_block_statistics {
     word_id max_word_id;
@@ -241,7 +242,7 @@ struct ngrams_block {
 
     template <typename Comparator, typename Iterator>
     bool is_sorted(Iterator begin, Iterator end) {
-        std::cout << "checking if block is sorted...";
+        std::cerr << "checking if block is sorted...";
         uint8_t N = order();
         Comparator comparator(N);
         auto it = begin;
@@ -266,7 +267,7 @@ struct ngrams_block {
             }
             prev = curr;
         }
-        if (ret) std::cout << "OK!" << std::endl;
+        if (ret) std::cerr << "OK!" << std::endl;
         return ret;
     }
 

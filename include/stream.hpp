@@ -115,7 +115,7 @@ private:
         if (eos()) return;
         auto s = clock_type::now();
         block_type block(m_N);
-        if (m_read_bytes + bytes > m_file_size) {
+        if (m_read_bytes + bytes >= m_file_size) {
             bytes = m_file_size - m_read_bytes;
             m_eos = true;
         }
@@ -187,7 +187,7 @@ private:
         assert(size > 0);
         block_type block(m_N, size, m_w, m_v);
         size_t bytes = fc::BLOCK_BYTES;
-        if (m_read_bytes + bytes > m_file_size) {
+        if (m_read_bytes + bytes >= m_file_size) {
             bytes = m_file_size - m_read_bytes;
             m_eos = true;
         }

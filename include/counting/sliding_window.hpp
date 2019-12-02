@@ -84,6 +84,7 @@ struct sliding_window {
     // return the position of the end of current window,
     // i.e., by discarding the whitespace and the beginning of the next word
     inline uint64_t end() const {
+        assert(m_end >= 2);
         return m_end - 2;
     }
 

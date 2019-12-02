@@ -11,6 +11,71 @@ int compare_i(T const& x, T const& y, int i) {
 }
 
 template <typename T>
+struct prefix_order_comparator {
+    prefix_order_comparator() {}
+
+    void init(uint8_t N) {
+        m_N = N;
+    }
+
+    prefix_order_comparator(uint8_t N) {
+        init(N);
+    }
+
+    int order() const {
+        return m_N;
+    }
+
+    void swap(prefix_order_comparator& other) {
+        std::swap(m_N, other.m_N);
+    }
+
+    bool operator()(T const& x, T const& y) const {
+        return compare(x, y) < 0;
+    }
+
+    inline int begin() const {
+        return 0;
+    }
+
+    inline int end() const {  // last valid index, not one-past the end
+        return m_N - 1;
+    }
+
+    inline void next(int& i) const {
+        ++i;
+    }
+
+    inline void advance(int& i, int n) const {
+        i += n;
+    }
+
+    // returns the length of lcp(x,y)
+    int lcp(T const& x, T const& y) const {
+        for (int i = begin(); i != end(); next(i)) {
+            int cmp = compare_i(x, y, i);
+            if (cmp != 0) return i;
+        }
+        return m_N;
+    }
+
+    int compare(T const& x, T const& y) const {
+        for (int i = begin(); i < m_N; ++i) {
+            int cmp = compare_i(x, y, i);
+            if (cmp != 0) return cmp;
+        }
+        return 0;
+    }
+
+    bool equals(T const& x, T const& y) const {
+        return compare(x, y) == 0;
+    }
+
+private:
+    int m_N;
+};
+
+template <typename T>
 struct context_order_comparator {
     context_order_comparator() {}
 

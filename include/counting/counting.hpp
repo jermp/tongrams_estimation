@@ -15,7 +15,7 @@
 
 namespace tongrams {
 
-template <typename BlockWriter>
+template <typename BlockWriter, typename Comparator>
 struct counting {
     counting(configuration const& config, tmp::data& tmp_data, tmp::statistics&,
              statistics&)
@@ -110,7 +110,7 @@ private:
     double m_CPU_time;
     double m_I_time;
 
-    typedef counting_writer<BlockWriter> counting_writer_type;
+    typedef counting_writer<BlockWriter, Comparator> counting_writer_type;
     typedef counting_reader<counting_writer_type> counting_reader_type;
     counting_writer_type m_writer;
     counting_reader_type m_reader;

@@ -17,6 +17,7 @@ struct counting_reader {
         , m_writer(thread)
         , m_next_word_id(1)  // 0 is reserved for token '</>'
         , m_CPU_time(0.0) {
+        m_window.fill(0);
         static constexpr double weight = 0.9;
         size_t bytes_per_ngram = sizeof_ngram(config.max_order) +
                                  sizeof(count_type) +  // payload
@@ -37,14 +38,17 @@ struct counting_reader {
         m_counts.init(m_max_order, m_num_ngrams_per_block);
         m_window.init({data + partition_begin, data + m_partition_end},
                       partition_begin);
-        m_window.fill(0);
-        for (uint8_t n = 0; n < m_max_order - 1; ++n) {
-            if (m_file_begin) {
-                count();
-            } else {
-                advance();
-            }
-        }
+
+        count();
+
+        // for (uint8_t n = 0; n < m_max_order - 1; ++n) {
+        //     if (m_file_begin) {
+        //         count();
+        //     } else {
+        //         advance();
+        //     }
+        // }
+
         auto e = clock_type::now();
         std::chrono::duration<double> diff = e - s;
         m_CPU_time += diff.count();
@@ -71,8 +75,8 @@ struct counting_reader {
         // w_{m-1} w_m </> </> </>
         // w_m </> </> </> </>
         if (m_file_end) {
-            assert(m_max_order >= 2);
-            for (int i = 0; i < m_max_order - 2; ++i) {
+            assert(m_max_order > 0);
+            for (uint8_t i = 0; i <= m_max_order - 1; ++i) {
                 count();
             }
         }
@@ -141,10 +145,8 @@ private:
         }
 
         if (m_counts.size() == m_num_ngrams_per_block) {
-            essentials::logger("waiting for flushing...");
             while (m_writer.size() > 0)
                 ;  // wait for flush
-            essentials::logger("done");
             push_block();
         }
     }

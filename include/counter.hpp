@@ -5,19 +5,17 @@
 #include "statistics.hpp"
 #include "stream.hpp"
 #include "counting/counting.hpp"
-#include "adjusting/adjusting.hpp"
-#include "last/last.hpp"
-#include "last/write.hpp"
+#include "merging/merging.hpp"
 
 namespace tongrams {
 
-struct estimation {
-    estimation(configuration const& config)
+struct counter {
+    counter(configuration const& config)
         : m_config(config)
         , m_tmp_data()
         , m_tmp_stats(config.max_order)
         , m_stats(config.max_order) {
-        m_timings.reserve(3);
+        m_timings.reserve(2);
         std::cout << "{";
         std::cout << "\"dataset\":"
                   << boost::filesystem::path(config.text_filename).stem()
@@ -27,52 +25,37 @@ struct estimation {
         std::cout << "\"threads\":" << config.num_threads;
     }
 
-    ~estimation() {
+    ~counter() {
         std::cout << "}" << std::endl;
     }
 
     void run() {
         if (m_config.compress_blocks) {
-            typedef fc::writer<context_order_comparator_type> block_writer_type;
-            run<counting<block_writer_type, context_order_comparator_type>>(
+            typedef fc::writer<prefix_order_comparator_type> block_writer_type;
+            run<counting<block_writer_type, prefix_order_comparator_type>>(
                 "counting");
         } else {
-            run<counting<stream::writer, context_order_comparator_type>>(
+            run<counting<stream::writer, prefix_order_comparator_type>>(
                 "counting");
         }
 
         m_stats.num_ngrams(1) = m_tmp_data.word_ids.size();
         m_tmp_data.word_ids.clear();
-        auto handle = util::async_call(write_vocab);
+        write_vocab();
 
         if (m_config.compress_blocks) {
-            run<adjusting<stream::compressed_stream_generator>>("adjusting");
+            run<merging<stream::compressed_stream_generator>>("merging");
         } else {
-            run<adjusting<stream::uncompressed_stream_generator>>("adjusting");
+            run<merging<stream::uncompressed_stream_generator>>("merging");
         }
-
-        util::wait(handle);
-
-        run<last>("last");
-
-        // util::clean_temporaries(m_config.tmp_dirname);
     }
 
     void print_stats() {
-        std::cerr
-            << "==== STATISTICS =======================================\n";
-        std::cerr << "total num. of words = " << m_stats.total_words() << "\n";
-        std::cerr << "total num. of grams = " << m_stats.total_grams() << "\n";
-        std::cerr << "probability of <unk> word = " << m_stats.unk_prob()
-                  << "\n";
-        m_stats.print();
         int step = 1;
         for (auto t : m_timings) {
             std::cerr << "step-" << step << ": " << t << " [sec]\n";
             ++step;
         }
-        std::cerr << "======================================================="
-                  << std::endl;
     }
 
 private:
@@ -93,7 +76,6 @@ private:
         std::chrono::duration<double> elapsed = end - start;
         double total_time = elapsed.count();
         m_timings.push_back(total_time);
-        step.print_stats();
         std::cout << "\"total\":" << total_time;
         std::cout << "}";
     }

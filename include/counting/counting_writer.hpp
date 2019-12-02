@@ -7,7 +7,7 @@
 
 namespace tongrams {
 
-template <typename BlockWriter>
+template <typename BlockWriter, typename Comparator>
 struct counting_writer {
     counting_writer(configuration const& config, tmp::data& tmp_data,
                     std::string const& file_extension)
@@ -76,7 +76,7 @@ private:
     double m_CPU_time;
     uint64_t m_num_flushes;
     BlockWriter m_writer;
-    context_order_comparator_type m_comparator;
+    Comparator m_comparator;
 
     void run() {
         while (m_buffer.active()) flush();
@@ -98,7 +98,8 @@ private:
         auto end = clock_type::now();
         std::chrono::duration<double> elapsed = end - start;
         m_CPU_time += elapsed.count();
-        essentials::logger("sorting took " + std::to_string(elapsed.count()));
+        std::cerr << "sorting took " << elapsed.count() << " [sec]"
+                  << std::endl;
 
         start = clock_type::now();
         std::string filename = m_filename_gen();
