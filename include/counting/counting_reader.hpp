@@ -28,8 +28,9 @@ struct counting_reader {
                                  bytes_per_ngram;
     }
 
-    void init(uint8_t const* data, uint64_t partition_begin,
-              uint64_t partition_end, bool file_begin, bool file_end) {
+    void init(uint8_t const* data, std::string const& boundary,
+              uint64_t partition_begin, uint64_t partition_end, bool file_begin,
+              bool file_end) {
         auto s = clock_type::now();
         m_partition_end = partition_end;
         m_file_begin = file_begin;
@@ -39,15 +40,15 @@ struct counting_reader {
         m_window.init({data + partition_begin, data + m_partition_end},
                       partition_begin);
 
-        count();
-
-        // for (uint8_t n = 0; n < m_max_order - 1; ++n) {
-        //     if (m_file_begin) {
-        //         count();
-        //     } else {
-        //         advance();
-        //     }
-        // }
+        if (!boundary.empty()) {
+            m_window.shift();
+            stl_string_adaptor adaptor;
+            byte_range range = adaptor(boundary);
+            uint64_t hash = hash_utils::hash_bytes64(range);
+            auto id = find_or_insert(range, hash);
+            m_window.eat(id);
+            count();
+        }
 
         auto e = clock_type::now();
         std::chrono::duration<double> diff = e - s;
@@ -62,10 +63,7 @@ struct counting_reader {
 
     void run() {
         auto s = clock_type::now();
-
-        while (m_window.end() < m_partition_end) {
-            count();
-        }
+        while (advance()) count();
 
         // NOTE: if we are at the end of file,
         // add [m_max_order - 1] ngrams padded with empty tokens,
@@ -76,7 +74,9 @@ struct counting_reader {
         // w_m </> </> </> </>
         if (m_file_end) {
             assert(m_max_order > 0);
-            for (uint8_t i = 0; i <= m_max_order - 1; ++i) {
+            for (uint8_t i = 0; i < m_max_order - 1; ++i) {
+                m_window.shift();
+                m_window.eat(0);
                 count();
             }
         }
@@ -112,28 +112,31 @@ private:
     bool m_file_begin, m_file_end;
     counting_step::block_type m_counts;
 
-    void advance() {
-        m_window.advance();
-        auto const& word = m_window.last();
-        assert(word.hash != constants::invalid_hash);
-
+    word_id find_or_insert(byte_range range, uint64_t hash) {
         word_id id = m_next_word_id;
-        auto it = m_tmp_data.word_ids.find(word.hash);
+        auto it = m_tmp_data.word_ids.find(hash);
         if (it == m_tmp_data.word_ids.end()) {
-            m_tmp_data.word_ids[word.hash] = m_next_word_id;
+            m_tmp_data.word_ids[hash] = m_next_word_id;
+            m_tmp_data.vocab_builder.push_back(range);
             ++m_next_word_id;
-            m_tmp_data.vocab_builder.push_back(word.range);
         } else {
             id = (*it).second;
         }
+        assert(id < m_next_word_id);
+        return id;
+    }
 
+    bool advance() {
+        if (!m_window.advance()) return false;
+        auto const& word = m_window.last();
+        assert(word.hash != constants::invalid_hash);
+        auto id = find_or_insert(word.range, word.hash);
         assert(id < m_next_word_id);
         m_window.eat(id);
+        return true;
     }
 
     void count() {
-        advance();
-
         uint64_t hash = hash_utils::murmur_hash64(m_window.data(),
                                                   sizeof_ngram(m_max_order), 0);
         ngram_id at;

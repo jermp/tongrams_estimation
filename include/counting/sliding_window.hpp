@@ -24,12 +24,12 @@ struct sliding_window {
         m_buff.assign(m_buff.size(), id);
     }
 
-    // void print() const {
-    //     for (auto x : m_buff.data) {
-    //         std::cout << x << " ";
-    //     }
-    //     std::cout << std::endl;
-    // }
+    void print() const {
+        for (auto x : m_buff) {
+            std::cout << x << " ";
+        }
+        std::cout << std::endl;
+    }
 
     struct word {
         void init(uint64_t h, byte_range br) {
@@ -41,9 +41,15 @@ struct sliding_window {
         byte_range range;
     };
 
-    void advance() {
+    inline void shift() {
         std::memmove(&m_buff[0], &m_buff[1],
                      sizeof_ngram(m_buff.size() - 1));  // shift left by one
+    }
+
+    bool advance() {
+        if (!m_iterator.has_next()) return false;
+
+        shift();
         uint64_t hash = hash_utils::hash_empty;
         byte_range range = constants::empty_byte_range;
         size_t range_len = 0;
@@ -59,7 +65,7 @@ struct sliding_window {
             } else {
                 m_end += 2;
                 m_last.init(hash, range);
-                return;
+                return false;
             }
         }
 
@@ -67,6 +73,8 @@ struct sliding_window {
         hash = hash_utils::hash_bytes64(range);
         m_end += range_len;
         m_last.init(hash, range);
+
+        return true;
     }
 
     void eat(word_id id) {
@@ -79,13 +87,6 @@ struct sliding_window {
 
     word_id const* data() {
         return m_buff.data();
-    }
-
-    // return the position of the end of current window,
-    // i.e., by discarding the whitespace and the beginning of the next word
-    inline uint64_t end() const {
-        assert(m_end >= 2);
-        return m_end - 2;
     }
 
     inline auto const& last() const {

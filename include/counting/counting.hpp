@@ -35,10 +35,11 @@ struct counting {
         static constexpr uint64_t mm_region_size = 1 * essentials::GiB;
         uint64_t blocks = util::ceil_div(m_config.text_size, mm_region_size);
         uint64_t page_size = sysconf(_SC_PAGESIZE);
+        assert(mm_region_size >= page_size and mm_region_size % page_size == 0);
 
         m_writer.start();
 
-        for (uint64_t block = 0, begin = 0, end = 0,
+        for (uint64_t block = 0,
                       page_id = 0;  // disk page containing the beginning of
                                     // current file block
              block != blocks; ++block) {
@@ -51,29 +52,26 @@ struct counting {
 
             m_data = util::open_file_partition(m_file, m_config.text_filename,
                                                chunk_size, offset);
-            end = m_file.size();
+            uint64_t begin = 0;
+            uint64_t end = m_file.size();
+            assert(end > 0);
+
             util::optimize_sequential_access(m_data, end);
+
+            if (!file_begin) align_forward(begin);
+            std::string boundary = m_boundary;
+            m_boundary.clear();
             if (!is_aligned(end - 1)) align_backward(begin, --end);
-            uint64_t n = end - begin;
+
+            uint64_t n = end;
             assert(n != 0 and n <= mm_region_size);
-            m_reader.init(m_data, begin, end, file_begin, file_end);
+            m_reader.init(m_data, boundary, begin, end, file_begin, file_end);
             m_reader.run();
             file_begin = false;
 
-            // now update end to a window back
-            for (uint8_t i = 0; i < m_config.max_order - 1; ++i) {
-                end -= 2;  // discards one-past-the-end and whitespace
-                align_backward(begin, end);
-                assert(is_aligned(end - 1));
-            }
-
             uint64_t num_pages = util::ceil_div(n, page_size);
             assert(num_pages > 0);
-            page_id += num_pages - 1;
-            begin = offset + end;
-            // now begin points to the beginning of 1 window back
-            assert(begin >= page_id * page_size);
-            begin -= page_id * page_size;
+            page_id += num_pages;
             m_file.close();
         }
 
@@ -94,19 +92,35 @@ private:
         return m_data[pos] == ' ' or m_data[pos] == '\n';
     }
 
+    void align_forward(uint64_t& begin) {
+        for (;; ++begin) {
+            auto c = m_data[begin];
+            if (c == ' ' or c == '\n') {
+                ++begin;  // first char after a whitespace
+                break;
+            }
+            m_boundary.push_back(c);
+        }
+    }
+
     void align_backward(uint64_t begin, uint64_t& end) {
         for (; begin != end; --end) {
             auto c = m_data[end];
             if (c == ' ' or c == '\n') {
                 ++end;  // one-past
+                std::reverse(m_boundary.begin(), m_boundary.end());
                 break;
             }
+            m_boundary.push_back(c);
         }
     }
 
     configuration const& m_config;
     boost::iostreams::mapped_file_source m_file;
     uint8_t const* m_data;
+
+    std::string m_boundary;
+
     double m_CPU_time;
     double m_I_time;
 
