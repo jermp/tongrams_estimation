@@ -24,6 +24,8 @@ struct merging_writer {
         vocab_builder.load(config.vocab_tmp_subdirname + config.vocab_filename);
         vocab_builder.build(m_vocab);
         std::cerr << "done" << std::endl;
+
+        if (m_order == 1) m_os << "</>\t0\n";
     }
 
     ~merging_writer() {
