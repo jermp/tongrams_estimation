@@ -33,6 +33,7 @@ struct ngrams_hash_block {
     }
 
     bool find_or_insert(ngram_type const& key, iterator hint, ngram_id& at) {
+        assert(buckets());
         Prober prober(hint, buckets());
         iterator start = *prober;
         iterator it = start;

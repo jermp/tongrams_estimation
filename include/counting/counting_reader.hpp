@@ -37,6 +37,7 @@ struct counting_reader {
         m_file_end = file_end;
         assert(partition_begin <= partition_end);
         m_counts.init(m_max_order, m_num_ngrams_per_block);
+        if (file_begin) count();  // count empty window
         m_window.init({data + partition_begin, data + m_partition_end},
                       partition_begin);
 

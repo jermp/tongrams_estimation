@@ -7,7 +7,7 @@ namespace tongrams {
 
 struct merging_writer {
     merging_writer(configuration const& config, statistics& stats)
-        : m_num_flushes(0), m_order(config.max_order) {
+        : m_num_flushes(0), m_order(config.max_order), m_ngrams(0) {
         m_buffer.open();
         m_os.open(config.output_filename.c_str(),
                   std::ofstream::ate | std::ofstream::app);
@@ -25,7 +25,14 @@ struct merging_writer {
         vocab_builder.build(m_vocab);
         std::cerr << "done" << std::endl;
 
+        //                               18446744073709551615\n
+        static std::string empty_line = "                    \n";
+        m_os.write(empty_line.data(), empty_line.size());
         if (m_order == 1) m_os << "</>\t0\n";
+
+        m_params.path = config.output_filename;
+        m_params.offset = 0;
+        m_params.length = sysconf(_SC_PAGESIZE);
     }
 
     ~merging_writer() {
@@ -48,6 +55,14 @@ struct merging_writer {
         assert(!m_buffer.active());
         while (!m_buffer.empty()) flush();
         m_os.close();
+
+        // write number of ngrams at the beginning of file
+        boost::iostreams::mapped_file_sink tmp(m_params);
+        char* data = tmp.data();
+        std::string str = std::to_string(m_ngrams);
+        memcpy(data, str.data(), str.size());
+        tmp.close();
+
         std::cerr << "\tmerging_writer thread stats:\n";
         std::cerr << "\tflushed blocks: " << m_num_flushes << "\n";
     }
@@ -71,7 +86,10 @@ private:
     std::thread m_thread;
     uint64_t m_num_flushes;
     uint64_t m_order;
+    uint64_t m_ngrams;
     vocabulary m_vocab;
+
+    boost::iostreams::mapped_file_params m_params;
 
     void run() {
         while (m_buffer.active()) flush();
@@ -95,6 +113,7 @@ private:
             m_os << "\t" << *ngram.value(m_order) << "\n";
         }
 
+        m_ngrams += block.size();
         block.release();
 
         m_buffer.lock();
