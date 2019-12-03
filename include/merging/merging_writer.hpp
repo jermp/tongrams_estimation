@@ -28,7 +28,6 @@ struct merging_writer {
         //                               18446744073709551615\n
         static std::string empty_line = "                    \n";
         m_os.write(empty_line.data(), empty_line.size());
-        if (m_order == 1) m_os << "</>\t0\n";
 
         m_params.path = config.output_filename;
         m_params.offset = 0;
