@@ -101,7 +101,7 @@ struct statistics {
         }
     }
 
-    // void print_stats() {  // debug purposes
+    // void print_stats() {
     //     std::cerr << "modified counts for unigrams" << std::endl;
     //     for (auto x : occs[0]) {
     //         std::cerr << x << std::endl;

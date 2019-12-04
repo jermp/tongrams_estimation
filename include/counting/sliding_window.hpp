@@ -50,8 +50,8 @@ struct sliding_window {
         if (!m_iterator.has_next()) return false;
 
         shift();
-        uint64_t hash = hash_utils::hash_empty;
-        byte_range range = constants::empty_byte_range;
+        uint64_t hash = hash_utils::hash_empty_token;
+        byte_range range = constants::empty_token_byte_range;
         size_t range_len = 0;
 
         while (range_len == 0) {  // skip blank lines
@@ -70,7 +70,7 @@ struct sliding_window {
         }
 
         ++range_len;
-        hash = hash_utils::hash_bytes64(range);
+        hash = hash_utils::byte_range_hash64(range);
         m_end += range_len;
         m_last.init(hash, range);
 

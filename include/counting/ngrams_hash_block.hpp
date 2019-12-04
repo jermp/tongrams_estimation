@@ -32,17 +32,19 @@ struct ngrams_hash_block {
         m_block.resize_index(size);
     }
 
-    bool find_or_insert(ngram_type const& key, iterator hint, ngram_id& at) {
+    std::pair<bool, ngram_id> find_or_insert(ngram_type const& key,
+                                             iterator hint) {
         assert(buckets());
         Prober prober(hint, buckets());
         iterator start = *prober;
         iterator it = start;
+        ngram_id at = invalid_ngram_id;
 
         while (m_data[it] != invalid_ngram_id) {
             assert(it < buckets());
             if (equal_to(m_block[m_data[it]].data, key.data(), m_num_bytes)) {
                 at = m_data[it];
-                return true;
+                return {true, at};
             }
             ++prober;
             it = *prober;
@@ -51,7 +53,7 @@ struct ngrams_hash_block {
                 std::cerr << "ERROR: all positions have been checked"
                           << std::endl;
                 at = invalid_ngram_id;
-                return false;
+                return {false, at};
             }
         }
 
@@ -59,7 +61,7 @@ struct ngrams_hash_block {
         m_data[it] = m_size++;
         at = m_data[it];
         m_block.set(at, key.begin(), key.end(), 1);
-        return false;
+        return {false, at};
     }
 
     template <typename Comparator>

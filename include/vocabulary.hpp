@@ -34,9 +34,10 @@ struct vocabulary {
 
         void load(std::string const& vocab_filename) {
             text_lines it(vocab_filename.c_str());
-            for (uint64_t i = 0; i < m_vocab_size; ++i) {
+            for (uint64_t i = 0; i != m_vocab_size; ++i) {
                 auto unigram = it.next_word();
-                if (bytes::equal_bytes(unigram, constants::empty_byte_range)) {
+                if (bytes::equal_bytes(unigram,
+                                       constants::empty_token_byte_range)) {
                     push_empty();
                 } else {
                     push_back(unigram);
@@ -74,10 +75,11 @@ struct vocabulary {
         assert(id < m_offsets.size() - 1);
         uint64_t begin = m_offsets[id];
         uint64_t end = m_offsets[id + 1];
+        assert(end >= begin);
         if (LIKELY(begin != end)) {
             return m_unigram_strings.get_bytes(m_base_addr, begin, end);
         }
-        return constants::empty_byte_range;
+        return constants::empty_token_byte_range;
     }
 
 private:

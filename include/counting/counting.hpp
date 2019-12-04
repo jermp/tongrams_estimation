@@ -24,9 +24,9 @@ struct counting {
         , m_I_time(0.0)
         , m_writer(config, tmp_data, constants::file_extension::counts)
         , m_reader(config, tmp_data, m_writer) {
-        uint64_t hash_empty = hash_utils::hash_empty;
         tmp_data.vocab_builder.push_empty();
-        tmp_data.word_ids[hash_empty] = 0;  // token '</>' gets word id 0
+        tmp_data.word_ids[hash_utils::hash_empty_token] =
+            constants::empty_token_word_id;
     }
 
     void run() {

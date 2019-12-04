@@ -13,10 +13,10 @@ struct merging {
     typedef cursor_comparator<prefix_order_comparator_type>
         cursor_comparator_type;
 
-    merging(configuration const& config, tmp::data& /*tmp_data*/,
-            tmp::statistics& /*tmp_stats*/, statistics& stats)
+    merging(configuration const& config, tmp::data& tmp_data,
+            tmp::statistics& /*tmp_stats*/, statistics& /*stats*/)
         : m_config(config)
-        , m_writer(config, stats)
+        , m_writer(config, tmp_data)
         , m_comparator(config.max_order)
         , m_cursors(cursor_comparator_type(config.max_order)) {}
 
@@ -82,7 +82,6 @@ struct merging {
         ngrams_block result(N);
         result.resize_memory(num_ngrams_per_block);
         result.reserve_index(num_ngrams_per_block);
-        uint64_t num_ngrams = 0;
 
         m_writer.start();
 
@@ -92,12 +91,10 @@ struct merging {
 
             if (!result.size()) {
                 result.push_back(min.data, min.data + N, *(min.value(N)));
-                ++num_ngrams;
             } else {
                 auto& back = result.back();
                 bool equal = equal_to(min.data, back.data, sizeof_ngram(N));
-
-                if (not equal) {
+                if (!equal) {
                     if (result.size() == num_ngrams_per_block) {
                         while (m_writer.size() > 0)
                             ;  // wait for flush
@@ -108,10 +105,7 @@ struct merging {
                         result.reserve_index(num_ngrams_per_block);
                         assert(result.empty());
                     }
-
                     result.push_back(min.data, min.data + N, *(min.value(N)));
-                    ++num_ngrams;
-
                 } else {
                     *(back.value(N)) += *(min.value(N));
                 }
@@ -136,9 +130,6 @@ struct merging {
 
             m_cursors.heapify();
         }
-
-        std::cerr << "MERGE DONE: " << num_ngrams << " " << int(N) << "-grams"
-                  << std::endl;
 
         m_writer.push(result);
         m_writer.terminate();

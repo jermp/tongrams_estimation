@@ -41,7 +41,7 @@ struct counter {
 
         m_stats.num_ngrams(1) = m_tmp_data.word_ids.size();
         m_tmp_data.word_ids.clear();
-        write_vocab();
+        // write_vocab();
 
         if (m_config.compress_blocks) {
             run<merging<stream::compressed_stream_generator>>("merging");
@@ -80,17 +80,17 @@ private:
         std::cout << "}";
     }
 
-    std::function<void(void)> write_vocab = [&]() {
-        std::ofstream os(m_config.vocab_tmp_subdirname +
-                         m_config.vocab_filename);
-        size_t vocab_size = m_stats.num_ngrams(1);
-        vocabulary vocab;
-        m_tmp_data.vocab_builder.build(vocab);
-        for (size_t id = 0; id != vocab_size; ++id) {
-            util::write(os, vocab[id]);
-            os << "\n";
-        }
-        os.close();
-    };
+    // std::function<void(void)> write_vocab = [&]() {
+    //     std::ofstream os(m_config.vocab_tmp_subdirname +
+    //                      m_config.vocab_filename);
+    //     size_t vocab_size = m_stats.num_ngrams(1);
+    //     vocabulary vocab;
+    //     m_tmp_data.vocab_builder.build(vocab);
+    //     for (size_t id = 0; id != vocab_size; ++id) {
+    //         util::write(os, vocab[id]);
+    //         os << "\n";
+    //     }
+    //     os.close();
+    // };
 };
 }  // namespace tongrams

@@ -6,24 +6,13 @@
 namespace tongrams {
 
 struct merging_writer {
-    merging_writer(configuration const& config, statistics& stats)
+    merging_writer(configuration const& config, tmp::data& tmp_data)
         : m_num_flushes(0), m_order(config.max_order), m_ngrams(0) {
         m_buffer.open();
         m_os.open(config.output_filename.c_str(),
                   std::ofstream::ate | std::ofstream::app);
 
-        size_t vocab_size = stats.num_ngrams(1);
-        if (!vocab_size) {
-            throw std::runtime_error("vocabulary size must not be 0");
-        }
-        std::cerr << "vocabulary size: " << vocab_size << std::endl;
-        std::cerr << "loading vocabulary..." << std::endl;
-        size_t num_bytes =
-            (sysconf(_SC_PAGESIZE) * sysconf(_SC_PHYS_PAGES)) / 2;
-        vocabulary::builder vocab_builder(vocab_size, num_bytes);
-        vocab_builder.load(config.vocab_tmp_subdirname + config.vocab_filename);
-        vocab_builder.build(m_vocab);
-        std::cerr << "done" << std::endl;
+        tmp_data.vocab_builder.build(m_vocab);
 
         //                               18446744073709551615\n
         static std::string empty_line = "                    \n";
@@ -64,6 +53,7 @@ struct merging_writer {
 
         std::cerr << "\tmerging_writer thread stats:\n";
         std::cerr << "\tflushed blocks: " << m_num_flushes << "\n";
+        std::cerr << "\tflushed ngrams: " << m_ngrams << "\n";
     }
 
     void push(ngrams_block& block) {
@@ -87,7 +77,6 @@ private:
     uint64_t m_order;
     uint64_t m_ngrams;
     vocabulary m_vocab;
-
     boost::iostreams::mapped_file_params m_params;
 
     void run() {
@@ -103,7 +92,7 @@ private:
         auto& block = m_buffer.pick();
         m_buffer.unlock();
 
-        for (auto ngram : block) {
+        for (auto const ngram : block) {
             for (uint64_t i = 0; i != m_order; ++i) {
                 auto br = m_vocab[ngram[i]];
                 util::write(m_os, br);

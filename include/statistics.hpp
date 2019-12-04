@@ -285,4 +285,5 @@ private:
     uint64_t m_total_num_words;
     float m_unk_prob;
 };
+
 }  // namespace tongrams

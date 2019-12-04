@@ -15,9 +15,9 @@ struct counting_reader {
         , m_window(config.max_order)
         , m_max_order(config.max_order)
         , m_writer(thread)
-        , m_next_word_id(1)  // 0 is reserved for token '</>'
+        , m_next_word_id(constants::empty_token_word_id + 1)
         , m_CPU_time(0.0) {
-        m_window.fill(0);
+        m_window.fill(constants::empty_token_word_id);
         static constexpr double weight = 0.9;
         size_t bytes_per_ngram = sizeof_ngram(config.max_order) +
                                  sizeof(count_type) +  // payload
@@ -45,7 +45,7 @@ struct counting_reader {
             m_window.shift();
             stl_string_adaptor adaptor;
             byte_range range = adaptor(boundary);
-            uint64_t hash = hash_utils::hash_bytes64(range);
+            uint64_t hash = hash_utils::byte_range_hash64(range);
             auto id = find_or_insert(range, hash);
             m_window.eat(id);
             count();
@@ -75,15 +75,13 @@ struct counting_reader {
         // w_m </> </> </> </>
         if (m_file_end) {
             assert(m_max_order > 0);
-            for (uint8_t i = 0; i < m_max_order - 1; ++i) {
+            for (uint8_t i = 0; i != m_max_order - 1; ++i) {
                 m_window.shift();
-                m_window.eat(0);
+                m_window.eat(constants::empty_token_word_id);
                 count();
             }
         }
 
-        while (m_writer.size() > 0)
-            ;  // wait for flush
         push_block();
 
         auto e = clock_type::now();
@@ -138,24 +136,20 @@ private:
     }
 
     void count() {
-        uint64_t hash = hash_utils::murmur_hash64(m_window.data(),
-                                                  sizeof_ngram(m_max_order), 0);
-        ngram_id at;
-        bool found = m_counts.find_or_insert(m_window.get(), hash, at);
+        uint64_t hash =
+            hash_utils::hash64(m_window.data(), sizeof_ngram(m_max_order));
+        auto [found, at] = m_counts.find_or_insert(m_window.get(), hash);
         if (found) {
             auto count = ++m_counts[at];
             auto& max_count = m_counts.statistics().max_count;
             if (count > max_count) max_count = count;
         }
-
-        if (m_counts.size() == m_num_ngrams_per_block) {
-            while (m_writer.size() > 0)
-                ;  // wait for flush
-            push_block();
-        }
+        if (m_counts.size() == m_num_ngrams_per_block) push_block();
     }
 
     void push_block() {
+        while (m_writer.size() > 0)
+            ;  // wait for flush
         counting_step::block_type tmp;
         tmp.init(m_max_order, m_num_ngrams_per_block);
         tmp.swap(m_counts);

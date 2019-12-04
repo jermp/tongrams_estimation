@@ -1,6 +1,7 @@
 #pragma once
 
 #include "util.hpp"
+#include "util_types.hpp"
 #include "../external/tongrams/include/utils/util_types.hpp"
 
 namespace tongrams {
@@ -16,11 +17,12 @@ static const std::string merged("m");
 static const std::string default_tmp_dirname("./tmp_dir");
 static const std::string default_output_filename("out.bin");
 
-static const std::string empty("</>");
+static const std::string empty_token("</>");
+static const word_id empty_token_word_id = 0;
 
-static const byte_range empty_byte_range{
-    reinterpret_cast<uint8_t const*>(empty.c_str()),
-    reinterpret_cast<uint8_t const*>(empty.c_str()) + empty.size()};
+static const byte_range empty_token_byte_range{
+    reinterpret_cast<uint8_t const*>(empty_token.c_str()),
+    reinterpret_cast<uint8_t const*>(empty_token.c_str()) + empty_token.size()};
 
 }  // namespace constants
 }  // namespace tongrams
