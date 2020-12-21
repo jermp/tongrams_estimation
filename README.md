@@ -15,16 +15,48 @@ This C++ library implements the 1-Sort algorithm described in the paper
 
 ### Sample usage
 
-    ./estimate ../test_data/1Billion.1M 5 --tmp tmp_dir --ram 0.25 --out out.bin
-    ./external/tongrams/score out.bin ../test_data/1Billion.1M
+After installation of dependencies and compilation of the code, you can use
+the sample text (first 1M lines from the 1Billion corpus; see the paper for dataset
+information) in the directory
+`test_data`. The text is gzipped, so it must be first uncompressed.
+
+	cd build
+	gunzip ../test_data/1Billion.1M.gz
+
+##### 1. Estimation
+
+Then you can estimate a Kneser-Ney language model of order 5 (using 25% of RAM and whose index is serialized to the file `index.bin`) as follows.
+
+    ./estimate ../test_data/1Billion.1M 5 --tmp tmp_dir --ram 0.25 --out index.bin
+
+##### 2. Computing Perplexity
+
+With the index built and serialized to `index.bin` you can compute
+the perplexity score with:
+
+    ./external/tongrams/score index.bin ../test_data/1Billion.1M
+
+##### 3. Counting N-Grams
+
+You can also extract n-gram counts. An example follows below, for 3-grams.
 
     ./count ../test_data/1Billion.1M 3 --tmp tmp_dir --ram 0.25 --out 3-grams
 
-### External dependencies
+The output file `3-grams` will list all extracted 3-grams sorted lexicographically
+in the following standard format:
+
+	<total_number_of_rows>
+	<gram1> <TAB> <count1>
+	<gram2> <TAB> <count2>
+	<gram3> <TAB> <count3>
+	...
+
+where each `<gram>` is a sequence of words separated by a whitespace character.
+
+### Dependencies
 
 1. [boost](https://www.boost.org/)
 2. [sparsehash](https://github.com/sparsehash/sparsehash)
-3. [tongrams](https://github.com/jermp/tongrams)
 
 ### Bibliography
 
