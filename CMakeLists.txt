@@ -25,7 +25,7 @@ endif ()
 
 if (UNIX AND NOT APPLE)
   MESSAGE(STATUS "Compiling with openmp")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp") # for __gnu::parallel_sort
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp") # for __gnu_parallel::sort
 endif()
 
 if (UNIX)
