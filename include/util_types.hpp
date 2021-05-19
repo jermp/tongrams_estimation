@@ -116,11 +116,11 @@ struct semi_sync_queue {
     }
 
     void lock() {
-        return m_mutex.lock();
+        m_mutex.lock();
     }
 
     void unlock() {
-        return m_mutex.unlock();
+        m_mutex.unlock();
     }
 
     void push(T& val) {
