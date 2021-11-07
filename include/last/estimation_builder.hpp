@@ -10,7 +10,7 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
                     Pointers>::estimation_builder {
     estimation_builder() {}
 
-    estimation_builder(uint8_t order, configuration const& config,
+    estimation_builder(uint64_t order, configuration const& config,
                        statistics& stats)
         : m_order(order)
         , m_unk_prob(stats.unk_prob())
@@ -36,46 +36,46 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
         double prob_quantum = 1.0 / probs_levels;
         double backoff_quantum = 1.0 / backoffs_levels;
 
-        for (uint8_t order = 2; order <= m_order; ++order) {
-            uint64_t n = stats.num_ngrams(order);
-            auto& level = m_arrays[order - 1];
+        for (uint64_t ord = 2; ord <= m_order; ++ord) {
+            uint64_t n = stats.num_ngrams(ord);
+            auto& level = m_arrays[ord - 1];
             level.word_ids.resize(n, log_vocab_size);
             level.probs_backoffs_ranks.resize(
-                n, config.probs_quantization_bits +
-                       ((order != m_order) ? config.backoffs_quantization_bits
-                                           : 0));
+                n,
+                config.probs_quantization_bits +
+                    ((ord != m_order) ? config.backoffs_quantization_bits : 0));
             probs.resize(probs_levels, 0.0);
             for (uint64_t i = 1; i != probs_levels + 1; ++i) {
                 probs[i - 1] = std::log10(i * prob_quantum);
             }
-            m_probs.add_sequence(order - 1, config.probs_quantization_bits,
+            m_probs.add_sequence(ord - 1, config.probs_quantization_bits,
                                  probs);
 
-            if (order != m_order) {
+            if (ord != m_order) {
                 backoffs.resize(backoffs_levels + 1, 0.0);
                 for (uint64_t i = 1; i != backoffs_levels + 1; ++i) {
                     backoffs[i] = std::log10(i * backoff_quantum);
                 }
                 m_backoffs.add_sequence(
-                    order - 1, config.backoffs_quantization_bits, backoffs);
+                    ord - 1, config.backoffs_quantization_bits, backoffs);
                 uint64_t pointer_bits =
-                    util::ceil_log2(stats.num_ngrams(order + 1) + 1);
+                    util::ceil_log2(stats.num_ngrams(ord + 1) + 1);
                 level.pointers.resize(n + 1, pointer_bits);
             }
         }
     }
 
-    void set_next_word(uint8_t n, word_id id) {
+    void set_next_word(uint64_t n, word_id id) {
         assert(n >= 2 and n <= m_order);
         m_arrays[n - 1].word_ids.push_back(id);
     }
 
-    void set_next_pointer(uint8_t n, uint64_t pointer) {
+    void set_next_pointer(uint64_t n, uint64_t pointer) {
         assert(n >= 1 and n < m_order);
         m_arrays[n - 1].pointers.push_back(pointer);
     }
 
-    void set_next_backoff(uint8_t n, float backoff) {
+    void set_next_backoff(uint64_t n, float backoff) {
         assert(n >= 2 and n < m_order);
         uint64_t backoff_rank =
             m_backoffs.rank(n - 2, std::log10(backoff), 1  // reserved
@@ -90,7 +90,7 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
         ++next_pos;
     }
 
-    void set_backoff(uint8_t n, uint64_t pos, float backoff) {
+    void set_backoff(uint64_t n, uint64_t pos, float backoff) {
         assert(n >= 2 and n < m_order);
         uint64_t backoff_rank =
             m_backoffs.rank(n - 2, std::log10(backoff), 1  // reserved
@@ -114,17 +114,17 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
         m_vocab_values.set(pos, packed);
     }
 
-    void set_word(uint8_t n, uint64_t pos, word_id id) {
+    void set_word(uint64_t n, uint64_t pos, word_id id) {
         assert(n >= 2 and n <= m_order);
         m_arrays[n - 1].word_ids.set(pos, id);
     }
 
-    void set_pointer(uint8_t n, uint64_t pos, uint64_t pointer) {
+    void set_pointer(uint64_t n, uint64_t pos, uint64_t pointer) {
         assert(n >= 1 and n < m_order);
         m_arrays[n - 1].pointers.set(pos, pointer);
     }
 
-    void set_prob(uint8_t n, uint64_t pos, float prob) {
+    void set_prob(uint64_t n, uint64_t pos, float prob) {
         assert(n >= 2 and n <= m_order);
         uint64_t prob_backoff_rank = m_arrays[n - 1].probs_backoffs_ranks[pos];
         uint64_t prob_rank = m_probs.rank(n - 2, std::log10(prob), 0);
@@ -174,7 +174,7 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
                 trie.m_arrays.resize(m_order);
 
                 // #pragma omp parallel for
-                for (uint8_t n = 2; n <= m_order; ++n) {
+                for (uint64_t n = 2; n <= m_order; ++n) {
                     if (n == m_order) {
                         // prefix sums pointers for N-grams
                         // std::cerr << "prefix summing pointers for "
@@ -206,7 +206,7 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
                 }
 
                 // #pragma omp parallel for
-                for (uint8_t n = 1; n < m_order; ++n) {
+                for (uint64_t n = 1; n < m_order; ++n) {
                     // std::cerr << "building " << int(n) << "-level pointers"
                     //           << std::endl;
                     m_arrays[n - 1].build_pointers(trie.m_arrays[n - 1]);
@@ -251,7 +251,7 @@ struct trie_prob_lm<Vocabulary, Mapper, Values, Ranks, Grams,
     }
 
 private:
-    uint8_t m_order;
+    uint64_t m_order;
     float m_unk_prob;
     compact_vector::builder m_vocab_values;
     typename Values::builder m_probs;

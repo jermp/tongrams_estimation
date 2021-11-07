@@ -17,7 +17,7 @@ struct statistics {
         word_id left;  // last seen word to the left of the word
     };
 
-    statistics(uint8_t order)
+    statistics(uint64_t order)
         : t(order, std::vector<uint64_t>(5, 0))
         , r(order, std::vector<uint64_t>(5, 0))
         , current_range_id(order, 0)
@@ -31,19 +31,19 @@ struct statistics {
         , stats(order - 1, std::vector<word_statistic>(
                                0, {invalid_range_id, invalid_word_id})) {}
 
-    void release(uint8_t n) {
+    void release(uint64_t n) {
         assert(n > 0);
         stats[n - 1].resize(0, {invalid_range_id, invalid_word_id});
     }
 
-    void resize(uint8_t n, size_t vocab_size) {
+    void resize(uint64_t n, size_t vocab_size) {
         assert(n > 0);
         occs[n - 1].resize(vocab_size, 0);
         stats[n - 1].resize(vocab_size, {invalid_range_id, invalid_word_id});
     }
 
     void clear() {
-        for (uint8_t n = 0; n < t.size(); ++n) {
+        for (uint64_t n = 0; n < t.size(); ++n) {
             for (uint64_t k = 0; k < 5; ++k) {
                 r[n][k] = 0;
                 t[n][k] = 0;
@@ -51,7 +51,7 @@ struct statistics {
         }
     }
 
-    bool was_not_seen(uint8_t n, word_id right) {
+    bool was_not_seen(uint64_t n, word_id right) {
         auto& stat = stats[n - 1][right];
         if (stat.id != current_range_id[n - 1]) {  // range changes
             stat.id = current_range_id[n - 1];
@@ -60,7 +60,7 @@ struct statistics {
         return false;
     }
 
-    bool update(uint8_t n, word_id left, word_id right) {
+    bool update(uint64_t n, word_id left, word_id right) {
         assert(n > 0 and n < t.size());
         auto& stat = stats[n - 1][right];
         auto& occ = occs[n - 1][right];
@@ -91,7 +91,7 @@ struct statistics {
         return false;
     }
 
-    void combine(uint8_t n) {
+    void combine(uint64_t n) {
         assert(n > 0);
         ++current_range_id[n - 1];
         for (uint64_t k = 0; k < 5; ++k) {
@@ -106,7 +106,7 @@ struct statistics {
     //     for (auto x : occs[0]) {
     //         std::cerr << x << std::endl;
     //     }
-    //     for (uint8_t n = 1; n <= t.size(); ++n) {
+    //     for (uint64_t n = 1; n <= t.size(); ++n) {
     //         for (uint64_t k = 1; k <= 5; ++k) {
     //             std::cerr << "r_" << int(n) << "(" << k << ") = "
     //                       << r[n - 1][k - 1] << std::endl;
