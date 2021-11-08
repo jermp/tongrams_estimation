@@ -9,7 +9,7 @@ namespace tongrams {
 
 template <typename Iterator>
 struct cursor {
-    cursor(Iterator begin, Iterator end, uint64_t i)
+    cursor(Iterator const& begin, Iterator const& end, uint64_t i)
         : range(begin, end), index(i) {}
 
     iterator_range<Iterator> range;
@@ -64,13 +64,6 @@ struct min_heap {
     inline uint64_t size() const {
         return m_q.size();
     }
-
-    // void print() const {
-    //     for (auto x : m_q) {
-    //         std::cout << x << " ";
-    //     }
-    //     std::cout << std::endl;
-    // }
 
 private:
     std::vector<T> m_q;

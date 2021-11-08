@@ -140,9 +140,6 @@ struct adjusting {
             auto& top = m_cursors.top();
             auto min = *(top.range.begin);
 
-            // std::cerr << "min element: ";
-            // min.print(N);
-
             if (!result.size()) {
                 result.push_back(min.data, min.data + N, *(min.value(N)));
                 ++num_Ngrams;

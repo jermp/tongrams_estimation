@@ -52,8 +52,11 @@ struct parallel_executor {
 template <typename Iterator>
 struct iterator_range {
     iterator_range() {}
-    iterator_range(Iterator b, Iterator e) : begin(b), end(e) {}
-    Iterator begin, end;
+    iterator_range(Iterator const& begin, Iterator const& end)
+        : begin(begin), end(end) {}
+
+    Iterator begin;
+    Iterator end;
 };
 
 template <typename T>
