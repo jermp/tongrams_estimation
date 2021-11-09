@@ -1,7 +1,9 @@
-Tongrams Estimation
---------
+[![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/jermp/tongrams_estimation.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/jermp/tongrams_estimation/context:cpp)
 
-Modified [Kneser-Ney](https://en.wikipedia.org/wiki/Kneser%E2%80%93Ney_smoothing) language model estimation powered by [tongrams](https://github.com/jermp/tongrams).
+Tongrams Estimation
+===================
+
+Modified [Kneser-Ney](https://en.wikipedia.org/wiki/Kneser%E2%80%93Ney_smoothing) language model estimation powered by [Tongrams](https://github.com/jermp/tongrams).
 
 This C++ library implements the 1-Sort algorithm described in the paper
 [*Handling Massive N-Gram Datasets Efficiently*](http://pages.di.unipi.it/pibiri/papers/TOIS19.pdf) by Giulio Ermanno Pibiri and Rossano Venturini, published in ACM TOIS, 2019 [1].
