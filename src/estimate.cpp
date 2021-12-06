@@ -57,7 +57,10 @@ int main(int argc, char** argv) {
     std::cerr << "reading from '" << config.text_filename << "' ("
               << config.text_size << " bytes)" << std::endl;
     config.max_order = parser.get<uint64_t>("order");
-    building_util::check_order(config.max_order);
+    if (config.max_order <= 2 or config.max_order > global::max_order) {
+        std::cerr << "invalid language model order" << std::endl;
+        return 1;
+    }
 
     size_t available_ram = sysconf(_SC_PAGESIZE) * sysconf(_SC_PHYS_PAGES);
 

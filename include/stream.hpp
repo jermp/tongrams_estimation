@@ -9,8 +9,7 @@
 
 #include "../external/tongrams/include/utils/util_types.hpp"
 
-namespace tongrams {
-namespace stream {
+namespace tongrams::stream {
 
 typedef ngrams_block uncompressed_block_type;
 typedef fc::ngrams_block<context_order_comparator_type> compressed_block_type;
@@ -245,6 +244,7 @@ struct floats_vec {
     }
 
     inline float operator[](size_t i) {
+        assert(i < m_floats.size());
         m_reint.uint_value = m_floats[i];
         return m_reint.float_value;
     }
@@ -275,5 +275,4 @@ private:
     std::vector<T> m_floats;
 };
 
-}  // namespace stream
-}  // namespace tongrams
+}  // namespace tongrams::stream
