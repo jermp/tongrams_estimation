@@ -63,7 +63,7 @@ struct statistics {
                     }
                 }
 
-                if (!ptr.equal_to(prev_ptr, 0, N - 1)) ++m_num_ngrams[N-2];
+                if (!ptr.equal_to(prev_ptr, 0, N - 1)) ++m_num_ngrams[N - 2];
 
                 // N-gram case: they do not have modified counts,
                 // rather their counts are equal to the occurrence in corpus

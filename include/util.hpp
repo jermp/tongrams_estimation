@@ -10,8 +10,7 @@
 #include <thread>
 #include <fstream>
 
-namespace tongrams {
-namespace util {
+namespace tongrams::util {
 
 void write(std::ofstream& os, byte_range br) {
     os.write(reinterpret_cast<const char*>(br.first),
@@ -73,5 +72,4 @@ void wait(std::unique_ptr<std::thread>& handle_ptr) {
     if (handle_ptr and handle_ptr->joinable()) handle_ptr->join();
 }
 
-}  // namespace util
-}  // namespace tongrams
+}  // namespace tongrams::util

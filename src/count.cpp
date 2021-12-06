@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
     configuration config;
     cmd_line_parser::parser parser(argc, argv);
     parser.add("text_filename", "Input text filename.");
-    parser.add("order", "Language model order. It must be > 0 and <= " +
+    parser.add("order", "Language model order. It must be > 2 and <= " +
                             std::to_string(global::max_order) + ".");
     parser.add("ram",
                "Amount to RAM in GiB. Default is " +
