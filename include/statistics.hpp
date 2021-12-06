@@ -63,7 +63,7 @@ struct statistics {
                     }
                 }
 
-                if (!ptr.equal_to(prev_ptr, 0, N - 1)) ++m_num_ngrams[3];
+                if (!ptr.equal_to(prev_ptr, 0, N - 1)) ++m_num_ngrams[N-2];
 
                 // N-gram case: they do not have modified counts,
                 // rather their counts are equal to the occurrence in corpus
@@ -78,7 +78,7 @@ struct statistics {
         }
 
         void finalize() {
-            ++m_num_ngrams[3];
+            ++m_num_ngrams[m_config.max_order - 2];
             for (uint64_t n = 2; n < m_config.max_order; ++n) {
                 ++m_num_ngrams[n - 2];
                 m_tmp_stats.combine(n);
